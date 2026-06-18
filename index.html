@@ -1,23 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Postventa Control Hub</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #020817; }
-    button, input, select { font-family: inherit; }
-  </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script type="text/babel">
-const { useState, useMemo, useEffect } = React;
+import { useState, useMemo } from "react";
 
 // ─── TALLERES COMPLETOS (19) ──────────────────────────────────────────────────
 const TALLERES = [
@@ -46,7 +27,6 @@ const TALLERES = [
 const TIENDAS = ["PROMART","PLAZA VEA","SODIMAC","ESTILOS","OECHSLE","CASALINDA","CONECTA RETAIL","GOMAX PERU","SPORT PLANET","HIRAOKA","RIPLEY","MAESTRO","WONG"];
 const TIPOS = ["SERVICIO TECNICO","DEVOLUCION","CAMBIO MM","ACCESORIO FALTANTE","ACCESORIO DEFECTUOSO"];
 const TRANSPORTISTAS = ["DANGELO","SCHARFF","FOX CARGO","ELLOS ENVIAN","OTRO"];
-const FALLAS = ["NO ENCIENDE","NO CALIENTA","NO GIRA","NO FUNCIONA","RUIDO EXCESIVO","PIEZA ROTA","ACCESORIO FALTANTE","ACCESORIO DEFECTUOSO","GOLPEADO","TIMER DEFECTUOSO","FUGA DE AGUA","OTRO"];
 
 // ─── LISTA COMPLETA DE PRODUCTOS (desde archivo real) ────────────────────────
 const PRODUCTOS = [
@@ -80,12 +60,11 @@ const ESTADOS_ST = [
   { id:"regularizado",     label:"Regularizado",         color:"#10b981", icon:"✅", desc:"Caso cerrado — producto en tienda" },
 ];
 const ESTADOS_DEV = [
-  { id:"caso_recibido",     label:"Caso recibido",       color:"#64748b", icon:"📋", desc:"Tienda notificó por correo/WhatsApp", nivel:0 },
-  { id:"pendiente_recojo",  label:"Pendiente de recojo", color:"#0ea5e9", icon:"🕐", desc:"Nosotros coordinamos recojo del producto", nivel:1 },
-  { id:"ellos_envian",      label:"Ellos envían",        color:"#14b8a6", icon:"📨", desc:"Se envía carta de autorización y la tienda/CD despacha el producto", nivel:1 },
-  { id:"en_ruta",           label:"En ruta",             color:"#8b5cf6", icon:"🚚", desc:"Producto en tránsito hacia MAPALSA/CD", nivel:2 },
-  { id:"producto_recibido", label:"Producto recibido",   color:"#f59e0b", icon:"📥", desc:"Producto en almacén / en tu poder", nivel:3 },
-  { id:"ingresado_sap",     label:"Ingresado en SAP",    color:"#10b981", icon:"✅", desc:"Devolución procesada en SAP — CERRADO", nivel:4 },
+  { id:"caso_recibido",     label:"Caso recibido",       color:"#64748b", icon:"📋", desc:"Tienda notificó por correo/WhatsApp" },
+  { id:"pendiente_recojo",  label:"Pendiente de recojo", color:"#0ea5e9", icon:"🕐", desc:"Se agenda recojo del producto" },
+  { id:"en_ruta",           label:"En ruta",             color:"#8b5cf6", icon:"🚚", desc:"Transportista recogió el producto" },
+  { id:"producto_recibido", label:"Producto recibido",   color:"#f59e0b", icon:"📥", desc:"Producto en almacén / en tu poder" },
+  { id:"ingresado_sap",     label:"Ingresado en SAP",    color:"#10b981", icon:"✅", desc:"Devolución procesada en SAP — CERRADO" },
 ];
 const ESTADOS_MM = [
   { id:"caso_recibido",    label:"Caso recibido",        color:"#64748b", icon:"📋", desc:"Tienda notificó por correo/WhatsApp" },
@@ -116,182 +95,54 @@ function getEstados(tipo) {
 function getEstadoInfo(tipo, id) { return getEstados(tipo || "SERVICIO TECNICO").find(e => e.id === id); }
 function isCerrado(c) { return c.estado === "regularizado" || c.estado === "ingresado_sap"; }
 
-// ─── DATOS OPERATIVOS ─────────────────────────────────────────────────────────
-// Producción: no hay casos ni pedidos de ejemplo dentro del HTML.
-// La app carga CASOS, PEDIDOS y PEDIDOS_ITEMS únicamente desde Google Sheets.
-const INIT_CASOS = [];
-const INIT_PEDIDOS = [];
+// ─── DATOS INICIALES ──────────────────────────────────────────────────────────
+const INIT_CASOS = [
+  { id:"OST-73043", ost:"73043", tienda:"PROMART", local:"PROMART REX", producto:"DESHUMEDECEDOR DH-202", tipo:"DEVOLUCION", taller_id:"", transportista:"DANGELO", falla:"", estado:"ingresado_sap", fecha_caso:"2024-03-07", fecha_recojo:"2024-03-22", guia_recojo:"", guia_envio:"", fecha_cierre:"2024-03-28", obs:"DEVOLUCION PROCESADA", dias_solucion:21 },
+  { id:"OST-73283", ost:"73283", tienda:"PROMART", local:"PROMART ATE", producto:"AGADIR CONNECT 2500", tipo:"SERVICIO TECNICO", taller_id:"2500100", transportista:"DANGELO", falla:"NO CALIENTA", estado:"regularizado", fecha_caso:"2024-03-12", fecha_recojo:"2024-03-22", guia_recojo:"", fecha_llegada_taller:"2024-03-23", fecha_envio_tienda:"2024-03-28", guia_envio:"", fecha_cierre:"2024-03-28", obs:"REGULARIZADO", dias_solucion:16, dias_reparacion:5 },
+  { id:"OST-76800", ost:"76800", tienda:"PROMART", local:"PROMART SALAVERRY", producto:"DESHUMEDECEDOR DH-202", tipo:"SERVICIO TECNICO", taller_id:"2500100", transportista:"DANGELO", falla:"TIMER DEFECTUOSO", estado:"en_reparacion", fecha_caso:"2024-06-05", fecha_recojo:"2024-06-14", guia_recojo:"", fecha_llegada_taller:"2024-06-15", fecha_envio_tienda:"", guia_envio:"", fecha_cierre:"", obs:"", dias_solucion:null, dias_reparacion:null },
+  { id:"OST-79060", ost:"79060", tienda:"PROMART", local:"PROMART TARAPOTO", producto:"VENTILADOR TURBO", tipo:"DEVOLUCION", taller_id:"", transportista:"SCHARFF", falla:"NO ENCIENDE", estado:"pendiente_recojo", fecha_caso:"2024-07-28", fecha_recojo:"", guia_recojo:"", guia_envio:"", fecha_cierre:"", obs:"", dias_solucion:null },
+  { id:"OST-80596", ost:"80596", tienda:"PROMART", local:"PROMART PUENTE PIEDRA", producto:"VENTILADOR APOLO", tipo:"SERVICIO TECNICO", taller_id:"2500100", transportista:"SCHARFF", falla:"DEJO DE FUNCIONAR", estado:"listo_envio", fecha_caso:"2024-08-26", fecha_recojo:"2024-09-02", guia_recojo:"", fecha_llegada_taller:"2024-09-08", fecha_envio_tienda:"", guia_envio:"", fecha_cierre:"", obs:"", dias_solucion:null, dias_reparacion:10 },
+  { id:"OST-80842", ost:"80842", tienda:"PROMART", local:"PROMART TEVA", producto:"RECIRCULADOR TURBO", tipo:"CAMBIO MM", taller_id:"", transportista:"DANGELO", falla:"NO ENCIENDE", estado:"cambio_entregado", fecha_caso:"2024-08-31", fecha_recojo:"2024-09-06", guia_recojo:"", guia_envio:"", fecha_cierre:"", obs:"ESPERANDO INGRESO SAP", dias_solucion:null },
+];
+
+// Pedido con múltiples repuestos: { id, taller_id, tipo_pedido, num_pedido, fecha_solicitud, guia, fecha_despacho, fecha_recibo_taller, estado, notas, items:[{repuesto,referencia,producto,cantidad}] }
+const INIT_PEDIDOS = [
+  {
+    id:"PED-001", taller_id:"2500100", tipo_pedido:"GARANTIA", num_pedido:"GARANTIAS #44",
+    fecha_solicitud:"2024-09-01", fecha_despacho:"2024-09-03", fecha_recibo_taller:"2024-09-05",
+    guia:"SCHARFF-12345", estado:"recibido_taller", notas:"Instalado ok", dias_respuesta:2,
+    items:[
+      { repuesto:"Motor ventilador TD-380", referencia:"MOT-TD380-A", producto:"DESHUMEDECEDOR TD-380", cantidad:2 },
+      { repuesto:"Termostato S2000", referencia:"TERM-S2000", producto:"CALEFACTOR S2000", cantidad:1 },
+    ]
+  },
+  {
+    id:"PED-002", taller_id:"2501602", tipo_pedido:"GARANTIA", num_pedido:"GARANTIAS #119",
+    fecha_solicitud:"2024-09-05", fecha_despacho:"2024-09-08", fecha_recibo_taller:"",
+    guia:"FOX-99821", estado:"en_transito", notas:"En camino a Trujillo", dias_respuesta:null,
+    items:[
+      { repuesto:"Resistencia calefactor Agadir", referencia:"RES-AGADIR-1", producto:"AGADIR CONNECT 2500", cantidad:1 },
+    ]
+  },
+  {
+    id:"PED-003", taller_id:"2500148", tipo_pedido:"GARANTIA", num_pedido:"PEDIDO DE REPUESTO #24",
+    fecha_solicitud:"2024-09-06", fecha_despacho:"", fecha_recibo_taller:"",
+    guia:"", estado:"pendiente_despacho", notas:"Buscando stock", dias_respuesta:null,
+    items:[
+      { repuesto:"Sello puerta lavadora WF-1800", referencia:"SELL-1800-B", producto:"DESHUMEDECEDOR DH-201", cantidad:3 },
+      { repuesto:"Timer DH-202", referencia:"TIMER-DH202", producto:"DESHUMEDECEDOR DH-202", cantidad:2 },
+      { repuesto:"Ventilador interno TD-380", referencia:"VEN-TD380-I", producto:"DESHUMEDECEDOR TD-380", cantidad:1 },
+    ]
+  },
+];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const today      = () => new Date().toISOString().split("T")[0];
 const genId      = (prefix, list) => `${prefix}-${String(list.length + 1).padStart(3,"0")}`;
 const diasEntre  = (a, b) => (!a || !b) ? null : Math.round((new Date(b)-new Date(a))/86400000);
-const dateOnly   = d => d ? new Date(d).toISOString().split("T")[0] : "";
-const inDateRange = (value, from, to) => {
-  if (!value) return !from && !to;
-  const v = dateOnly(value);
-  if (from && v < from) return false;
-  if (to && v > to) return false;
-  return true;
-};
-const addDays = (date, days) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
-const startOfWeek = (date = new Date()) => { const d = new Date(date); const day = d.getDay() || 7; d.setDate(d.getDate() - day + 1); return d; };
-const endOfWeek = (date = new Date()) => addDays(startOfWeek(date), 6);
-const startOfMonth = (date = new Date()) => new Date(date.getFullYear(), date.getMonth(), 1);
-const endOfMonth = (date = new Date()) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
 const tallerById = id => TALLERES.find(t => t.id === id);
 const TIPO_PEDIDO_OPTS = ["GARANTIA","VENTA","PEDIDO DE REPUESTO"];
 const TIPO_COLOR = { "SERVICIO TECNICO":"#0ea5e9","DEVOLUCION":"#f97316","CAMBIO MM":"#8b5cf6","ACCESORIO FALTANTE":"#f59e0b","ACCESORIO DEFECTUOSO":"#ef4444" };
-
-// ─── API GOOGLE SHEETS ────────────────────────────────────────────────────────
-// Pega aquí la URL de tu implementación de Apps Script terminada en /exec.
-// Ejemplo: https://script.google.com/macros/s/AKfycbxxxx/exec
-const API_URL = "https://script.google.com/macros/s/AKfycbxhdb7LvI5o1Odp9hbEiu_-n8Crupi9Up3_mjO2sfhOQlWXNP6Mu60d2sOW66FS77D6Yg/exec";
-
-const apiEnabled = () => API_URL && !API_URL.includes("PEGA_AQUI");
-
-function rowsToObjects(rows) {
-  if (!Array.isArray(rows) || rows.length < 2) return [];
-  const headers = rows[0].map(h => String(h || "").trim());
-  return rows.slice(1)
-    .filter(row => row.some(v => v !== "" && v !== null && v !== undefined))
-    .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
-}
-
-async function apiGet(action) {
-  if (!apiEnabled()) return null;
-  const res = await fetch(`${API_URL}?action=${action}`);
-  const json = await res.json();
-  if (json?.error) throw new Error(json.error);
-  return json;
-}
-
-async function apiPost(action, payload) {
-  if (!apiEnabled()) return null;
-  const res = await fetch(`${API_URL}?action=${action}`, {
-    method: "POST",
-    // text/plain evita problemas de preflight/CORS con Apps Script.
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
-  if (json?.error) throw new Error(json.error);
-  return json;
-}
-
-function normalizePedido(pedido, items) {
-  return {
-    ...pedido,
-    items: items.filter(it => String(it.pedido_id || "") === String(pedido.id || "")),
-  };
-}
-
-function pickFirst(row, keys) {
-  for (const k of keys) {
-    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== "") return String(row[k]).trim();
-  }
-  return "";
-}
-
-function uniqClean(list) {
-  return [...new Set((list || []).map(v => String(v || "").trim()).filter(Boolean))].sort();
-}
-
-function toProductObj(r) {
-  if (typeof r === "string") return { codsap:"", producto:r, familia:"", activo:"SI", label:r };
-  const codsap = pickFirst(r, ["CODSAP", "codsap", "CODPE", "codpe", "CODIGO_SAP", "codigo_sap"]);
-  const producto = pickFirst(r, ["PRODUCTO", "producto", "Producto", "nombre", "Nombre"]);
-  const familia = pickFirst(r, ["FAMILIA", "familia", "Familia"]);
-  const activo = pickFirst(r, ["ACTIVO", "activo", "Activo"]) || "SI";
-  return { codsap, producto, familia, activo, label: codsap ? `${codsap} - ${producto}` : producto };
-}
-
-function toFallaObj(r) {
-  if (typeof r === "string") return { cod_falla:"", falla:r, categoria:"", label:r };
-  const cod_falla = pickFirst(r, ["COD_FALLA", "cod_falla", "CODFALLA", "codfalla"]);
-  const falla = pickFirst(r, ["FALLA", "falla", "DESCRIPCION", "descripcion", "Descripción", "descripcion_falla"]);
-  const categoria = pickFirst(r, ["CATEGORIA", "categoria", "TIPO_FALLA", "tipo_falla"]);
-  return { cod_falla, falla, categoria, label: cod_falla ? `${cod_falla} - ${falla}` : falla };
-}
-
-function toTiendaObj(r) {
-  if (typeof r === "string") return { cod_tienda:"", tienda:r, local:"", label:r };
-  const cod_tienda = pickFirst(r, ["COD_TIENDA", "cod_tienda", "CODTIENDA", "codtienda"]);
-  const tienda = pickFirst(r, ["TIENDA", "tienda", "Tienda", "nombre", "Nombre"]);
-  const local = pickFirst(r, ["LOCAL", "local", "Local"]);
-  return { cod_tienda, tienda, local, label: cod_tienda ? `${cod_tienda} - ${tienda}${local ? " / "+local : ""}` : `${tienda}${local ? " / "+local : ""}` };
-}
-
-function toTransportistaObj(r) {
-  if (typeof r === "string") return { transportista:r, label:r };
-  const transportista = pickFirst(r, ["TRANSPORTISTA", "transportista", "Transportista", "nombre", "Nombre"]);
-  return { transportista, label:transportista };
-}
-
-function toTallerObj(t) {
-  const id = pickFirst(t, ["COD_TALLER", "cod_taller", "CODTALLER", "codtaller", "id", "ID"]);
-  return {
-    id,
-    cod_taller:id,
-    nombre: pickFirst(t, ["NOMBRE", "nombre", "Nombre"]),
-    provincia: pickFirst(t, ["PROVINCIA", "provincia", "Provincia"]),
-    contacto: pickFirst(t, ["CONTACTO", "contacto"]),
-    tel: pickFirst(t, ["TELEFONO", "telefono", "tel", "TEL"]),
-    email: pickFirst(t, ["EMAIL", "email"]),
-    dir: pickFirst(t, ["DIRECCION", "direccion", "dir", "DIR"]),
-    horario: pickFirst(t, ["HORARIO", "horario"]),
-    lat: t.LAT || t.lat || "",
-    lng: t.LNG || t.lng || "",
-  };
-}
-
-function toRepuestoObj(r) {
-  return {
-    cod_repuesto: pickFirst(r, ["COD_REPUESTO", "cod_repuesto", "CODREPUESTO", "codrepuesto", "referencia", "REFERENCIA"]),
-    repuesto: pickFirst(r, ["REPUESTO", "repuesto", "Repuesto"]),
-    codsap: pickFirst(r, ["CODSAP", "codsap", "CODPE", "codpe", "CODIGO_SAP", "codigo_sap"]),
-    producto: pickFirst(r, ["PRODUCTO", "producto", "Producto"]),
-    referencia: pickFirst(r, ["REFERENCIA", "referencia"]),
-  };
-}
-
-function toUsuarioObj(r) {
-  return {
-    email: pickFirst(r, ["EMAIL", "email", "USUARIO", "usuario", "Usuario"]).toLowerCase(),
-    nombre: pickFirst(r, ["NOMBRE", "nombre", "Nombre"]),
-    rol: (pickFirst(r, ["ROL", "rol", "Rol"]) || "CONSULTA").toUpperCase(),
-    activo: (pickFirst(r, ["ACTIVO", "activo", "Activo"]) || "SI").toUpperCase(),
-  };
-}
-
-function buildMaestros(raw) {
-  const productosRows = rowsToObjects(raw?.productos || []);
-  const tiendasRows = rowsToObjects(raw?.tiendas || []);
-  const transportistasRows = rowsToObjects(raw?.transportistas || []);
-  const fallasRows = rowsToObjects(raw?.fallas || []);
-  const talleresRows = rowsToObjects(raw?.talleres || []);
-  const repuestosRows = rowsToObjects(raw?.repuestos || []);
-
-  return {
-    productos: productosRows.map(toProductObj).filter(p => p.producto && String(p.activo || "SI").toUpperCase() !== "NO"),
-    tiendas: tiendasRows.map(toTiendaObj).filter(t => t.tienda),
-    transportistas: transportistasRows.map(toTransportistaObj).filter(t => t.transportista),
-    fallas: fallasRows.map(toFallaObj).filter(f => f.falla),
-    talleres: talleresRows.map(toTallerObj).filter(t => t.id || t.nombre),
-    repuestos: repuestosRows.map(toRepuestoObj).filter(r => r.repuesto || r.cod_repuesto),
-  };
-}
-
-function productLabel(p) { return typeof p === "string" ? p : (p.label || p.producto || ""); }
-function fallaLabel(f) { return typeof f === "string" ? f : (f.label || f.falla || ""); }
-function tiendaLabel(t) { return typeof t === "string" ? t : (t.label || t.tienda || ""); }
-function transportistaLabel(t) { return typeof t === "string" ? t : (t.label || t.transportista || ""); }
-function productValue(p) { return typeof p === "string" ? p : p.producto; }
-function fallaValue(f) { return typeof f === "string" ? f : f.falla; }
-function tiendaValue(t) { return typeof t === "string" ? t : t.tienda; }
-function transportistaValue(t) { return typeof t === "string" ? t : t.transportista; }
-
-
 
 // ─── ESTILOS BASE ─────────────────────────────────────────────────────────────
 const S = {
@@ -338,49 +189,6 @@ function Modal({ title, onClose, children, wide }) {
 }
 function EstadoStepper({ tipo, estadoActual, onCambiar }) {
   const estados = getEstados(tipo);
-
-  const renderEstado = (e, i, esActual, esComp, esFut, compact=false) => (
-    <div key={e.id} onClick={()=>onCambiar(e.id)}
-      style={{ display:"flex", alignItems:"center", gap:10, padding:compact?"9px 10px":"9px 13px", borderRadius:9, cursor:"pointer",
-        background:esActual?e.color+"22":esComp?"#1e293b":"#0a1628",
-        border:esActual?`1.5px solid ${e.color}`:"1px solid #1e293b", opacity:esFut?0.45:1 }}>
-      <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:12,
-        background:esActual?e.color:esComp?"#10b98133":"#1e293b",
-        border:esActual?`2px solid ${e.color}`:esComp?"2px solid #10b981":"1px solid #334155",
-        color:esActual?"#fff":esComp?"#10b981":"#475569", fontWeight:700 }}>
-        {esComp?"✓":(e.icon || i+1)}
-      </div>
-      <div style={{ flex:1 }}>
-        <div style={{ color:esActual?e.color:esComp?"#94a3b8":"#64748b", fontWeight:esActual?700:500, fontSize:13 }}>{e.label}</div>
-        {esActual && <div style={{ color:"#64748b", fontSize:11, marginTop:1 }}>{e.desc}</div>}
-      </div>
-      {esActual && <div style={{ width:7, height:7, borderRadius:"50%", background:e.color }} />}
-    </div>
-  );
-
-  if (tipo === "DEVOLUCION") {
-    const levelById = Object.fromEntries(estados.map(e => [e.id, e.nivel ?? estados.indexOf(e)]));
-    const currentLevel = levelById[estadoActual] ?? 0;
-    const branch = estados.filter(e => e.nivel === 1);
-    const afterBranch = estados.filter(e => (e.nivel ?? 0) > 1);
-    const first = estados.find(e => e.id === "caso_recibido");
-    return (
-      <div>
-        <div style={{ fontSize:11, color:"#475569", fontWeight:700, marginBottom:10, textTransform:"uppercase" }}>Flujo — {tipo}</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:16 }}>
-          {first && renderEstado(first, 0, estadoActual===first.id, currentLevel>0, currentLevel>0)}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            {branch.map((e,i)=>renderEstado(e, i+1, estadoActual===e.id, currentLevel>1, currentLevel>1, true))}
-          </div>
-          {afterBranch.map((e,i)=>{
-            const lv = levelById[e.id] ?? i+2;
-            return renderEstado(e, i+3, estadoActual===e.id, lv<currentLevel, lv>currentLevel);
-          })}
-        </div>
-      </div>
-    );
-  }
-
   const idx = estados.findIndex(e=>e.id===estadoActual);
   return (
     <div>
@@ -388,7 +196,24 @@ function EstadoStepper({ tipo, estadoActual, onCambiar }) {
       <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:16 }}>
         {estados.map((e,i) => {
           const esActual = e.id===estadoActual, esComp = i<idx, esFut = i>idx;
-          return renderEstado(e, i, esActual, esComp, esFut);
+          return (
+            <div key={e.id} onClick={()=>onCambiar(e.id)}
+              style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 13px", borderRadius:9, cursor:"pointer",
+                background:esActual?e.color+"22":esComp?"#1e293b":"#0a1628",
+                border:esActual?`1.5px solid ${e.color}`:"1px solid #1e293b", opacity:esFut?0.45:1 }}>
+              <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:12,
+                background:esActual?e.color:esComp?"#10b98133":"#1e293b",
+                border:esActual?`2px solid ${e.color}`:esComp?"2px solid #10b981":"1px solid #334155",
+                color:esActual?"#fff":esComp?"#10b981":"#475569", fontWeight:700 }}>
+                {esComp?"✓":i+1}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ color:esActual?e.color:esComp?"#94a3b8":"#64748b", fontWeight:esActual?700:500, fontSize:13 }}>{e.label}</div>
+                {esActual && <div style={{ color:"#64748b", fontSize:11, marginTop:1 }}>{e.desc}</div>}
+              </div>
+              {esActual && <div style={{ width:7, height:7, borderRadius:"50%", background:e.color }} />}
+            </div>
+          );
         })}
       </div>
     </div>
@@ -396,27 +221,10 @@ function EstadoStepper({ tipo, estadoActual, onCambiar }) {
 }
 
 // ─── COMPONENTE ITEMS REPUESTO ─────────────────────────────────────────────────
-function ItemsRepuesto({ items, onChange, productos = PRODUCTOS.map(toProductObj), repuestos = [] }) {
-  const add = () => onChange([...items, { cod_repuesto:"", repuesto:"", referencia:"", codsap:"", producto:"", cantidad:1 }]);
+function ItemsRepuesto({ items, onChange }) {
+  const add = () => onChange([...items, { repuesto:"", referencia:"", producto:"", cantidad:1 }]);
   const upd = (i, k, v) => onChange(items.map((it,idx)=>idx===i?{...it,[k]:v}:it));
-  const selectProducto = (i, texto) => {
-    const q = String(texto || "").trim().toLowerCase();
-    const prod = productos.find(p => q && (q === String(p.codsap || "").toLowerCase() || q === String(p.producto || "").toLowerCase() || q === productLabel(p).toLowerCase()));
-    onChange(items.map((it,idx)=>idx===i?{...it, producto:prod ? productValue(prod) : texto, codsap:prod ? (prod.codsap || "") : ""}:it));
-  };
-  const selectRepuesto = (i, texto) => {
-    const q = String(texto || "").trim().toLowerCase();
-    const rep = repuestos.find(r => q && (
-      q === String(r.cod_repuesto || "").toLowerCase() ||
-      q === String(r.referencia || "").toLowerCase() ||
-      q === String(r.repuesto || "").toLowerCase() ||
-      q === `${r.cod_repuesto || r.referencia || ""} · ${r.repuesto || ""}${r.codsap ? " · "+r.codsap : ""}`.toLowerCase()
-    ));
-    if (!rep) return;
-    onChange(items.map((it,idx)=>idx===i?{...it, cod_repuesto:rep.cod_repuesto||rep.referencia||"", repuesto:rep.repuesto||"", referencia:rep.referencia||rep.cod_repuesto||"", codsap:rep.codsap||"", producto:rep.producto||it.producto}:it));
-  };
   const del = i => onChange(items.filter((_,idx)=>idx!==i));
-  const repuestosList = repuestos.filter(r => r.repuesto || r.referencia);
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
@@ -425,52 +233,26 @@ function ItemsRepuesto({ items, onChange, productos = PRODUCTOS.map(toProductObj
       </div>
       {items.map((item, i) => (
         <div key={i} style={{ background:"#1e293b", borderRadius:10, padding:"12px 14px", marginBottom:8, display:"grid", gridTemplateColumns:"2fr 1.2fr 1.5fr 60px 32px", gap:8, alignItems:"center" }}>
-          <input style={S.inp} list="repuestos-list" placeholder="Nombre o código del repuesto" value={item.repuesto} onChange={e=>upd(i,"repuesto",e.target.value)} onBlur={e=>selectRepuesto(i,e.target.value)} />
+          <input style={S.inp} placeholder="Nombre del repuesto" value={item.repuesto} onChange={e=>upd(i,"repuesto",e.target.value)} />
           <input style={S.inp} placeholder="Referencia" value={item.referencia} onChange={e=>upd(i,"referencia",e.target.value)} />
-          <input style={S.inp} list="productos-list-repuestos" placeholder="CODSAP o producto" value={item.producto} onChange={e=>upd(i,"producto",e.target.value)} onBlur={e=>selectProducto(i,e.target.value)} />
+          <select style={S.inp} value={item.producto} onChange={e=>upd(i,"producto",e.target.value)}>
+            <option value="">Producto...</option>
+            {PRODUCTOS.map(p=><option key={p}>{p}</option>)}
+          </select>
           <input style={{ ...S.inp, textAlign:"center" }} type="number" min="1" placeholder="Cant." value={item.cantidad} onChange={e=>upd(i,"cantidad",parseInt(e.target.value)||1)} />
           <button onClick={()=>del(i)} style={{ background:"#ef444422", border:"1px solid #ef444444", borderRadius:6, color:"#ef4444", cursor:"pointer", fontWeight:700, fontSize:14, height:36 }}>×</button>
         </div>
       ))}
-      <datalist id="repuestos-list">
-        {repuestosList.map((r, idx)=><option key={idx} value={`${r.cod_repuesto || r.referencia || ""}${r.cod_repuesto || r.referencia ? " · " : ""}${r.repuesto || ""}${r.codsap ? " · "+r.codsap : ""}`} />)}
-      </datalist>
-      <datalist id="productos-list-repuestos">
-        {productos.map(p=><option key={p.codsap || p.producto} value={productLabel(p)} />)}
-      </datalist>
       {items.length===0 && <div style={{ color:"#334155", fontSize:13, textAlign:"center", padding:"12px 0" }}>Sin repuestos — usa el botón para agregar</div>}
     </div>
   );
 }
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
-function App() {
+export default function App() {
   const [view, setView]   = useState("dashboard");
   const [casos, setCasos] = useState(INIT_CASOS);
   const [pedidos, setPedidos] = useState(INIT_PEDIDOS);
-  const [maestros, setMaestros] = useState({
-    productos: PRODUCTOS.map(toProductObj),
-    tiendas: TIENDAS.map(toTiendaObj),
-    transportistas: TRANSPORTISTAS.map(toTransportistaObj),
-    fallas: FALLAS.map(toFallaObj),
-    talleres: TALLERES,
-    repuestos: [],
-  });
-  const [usuarios, setUsuarios] = useState([]);
-  const [currentUser, setCurrentUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("postventa_user") || "null"); }
-    catch { return null; }
-  });
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const [apiStatus, setApiStatus] = useState(apiEnabled() ? "Sincronizando con Sheets..." : "Modo local: pega tu API_URL para sincronizar con Sheets");
-
-  const getTaller = id => maestros.talleres.find(t => String(t.id) === String(id));
-  const productosList = maestros.productos.length ? maestros.productos : PRODUCTOS.map(toProductObj);
-  const tiendasList = maestros.tiendas.length ? maestros.tiendas : TIENDAS.map(toTiendaObj);
-  const transportistasList = maestros.transportistas.length ? maestros.transportistas : TRANSPORTISTAS.map(toTransportistaObj);
-  const fallasList = maestros.fallas.length ? maestros.fallas : FALLAS.map(toFallaObj);
-  const talleresList = maestros.talleres.length ? maestros.talleres : TALLERES;
 
   // Filtros casos
   const [fCierre, setFCierre] = useState("activos");
@@ -478,73 +260,19 @@ function App() {
   const [fTaller, setFTaller] = useState("todos");
   const [fTipo,   setFTipo]   = useState("todos");
   const [search,  setSearch]  = useState("");
-  const [casosDesde, setCasosDesde] = useState("");
-  const [casosHasta, setCasosHasta] = useState("");
-  const [pedidosSearch, setPedidosSearch] = useState("");
-  const [pedidosDesde, setPedidosDesde] = useState("");
-  const [pedidosHasta, setPedidosHasta] = useState("");
-  const [searchTaller, setSearchTaller] = useState("");
-  const [fProvinciaTaller, setFProvinciaTaller] = useState("todos");
 
   // Modales
   const [showNewCaso,   setShowNewCaso]   = useState(false);
   const [showNewPedido, setShowNewPedido] = useState(false);
   const [selCaso,   setSelCaso]   = useState(null);
-  const [editCaso,  setEditCaso]  = useState(null);
-  const [logisticaModal, setLogisticaModal] = useState(null);
-  const [cartaModal, setCartaModal] = useState(null);
   const [selPedido, setSelPedido] = useState(null);
   const [selTaller, setSelTaller] = useState(null);
 
   // Formularios
-  const blankCaso = { ost:"", cod_tienda:"", tienda:"", local:"", codsap:"", producto:"", familia:"", cod_falla:"", falla:"", tipo:"SERVICIO TECNICO", cod_taller:"", taller_id:"", taller:"", transportista:"", fecha_caso:today(), modalidad_devolucion:"", fecha_carta_autorizacion:"", fecha_recojo:"", guia_recojo:"", fecha_llegada_taller:"", fecha_envio_tienda:"", guia_envio:"", transportista_envio:"", obs:"" };
-  const blankPedido = { cod_taller:"", taller_id:"", tipo_pedido:"GARANTIA", num_pedido:"", fecha_solicitud:today(), guia:"", transportista:"", notas:"", items:[{ cod_repuesto:"", repuesto:"", referencia:"", codsap:"", producto:"", cantidad:1 }] };
+  const blankCaso = { ost:"", tienda:"", local:"", producto:"", tipo:"SERVICIO TECNICO", taller_id:"", transportista:"", falla:"", fecha_caso:today(), fecha_recojo:"", guia_recojo:"", fecha_llegada_taller:"", fecha_envio_tienda:"", guia_envio:"", obs:"" };
+  const blankPedido = { taller_id:"", tipo_pedido:"GARANTIA", num_pedido:"", fecha_solicitud:today(), notas:"", items:[{ repuesto:"", referencia:"", producto:"", cantidad:1 }] };
   const [formCaso,   setFormCaso]   = useState(blankCaso);
   const [formPedido, setFormPedido] = useState(blankPedido);
-
-  useEffect(() => {
-    if (!apiEnabled()) return;
-
-    async function cargarSheets() {
-      try {
-        setApiStatus("Sincronizando con Sheets...");
-        const [casosRows, pedidosData, maestrosData, controlData] = await Promise.all([
-          apiGet("getCasos"),
-          apiGet("getPedidos"),
-          apiGet("getMaestros"),
-          apiGet("getControl"),
-        ]);
-
-        const casosApi = rowsToObjects(casosRows);
-        const pedidosApi = rowsToObjects(pedidosData?.pedidos || []);
-        const itemsApi = rowsToObjects(pedidosData?.items || []);
-
-        setCasos(casosApi);
-        setPedidos(pedidosApi.map(p => normalizePedido(p, itemsApi)));
-
-        const m = buildMaestros(maestrosData);
-        setMaestros(prev => ({
-          productos: m.productos.length ? m.productos : prev.productos,
-          tiendas: m.tiendas.length ? m.tiendas : prev.tiendas,
-          transportistas: m.transportistas.length ? m.transportistas : prev.transportistas,
-          fallas: m.fallas.length ? m.fallas : prev.fallas,
-          talleres: m.talleres.length ? m.talleres : prev.talleres,
-          repuestos: m.repuestos.length ? m.repuestos : prev.repuestos,
-        }));
-
-        const usuariosApi = rowsToObjects(controlData?.usuarios || []).map(toUsuarioObj).filter(u => u.email);
-        setUsuarios(usuariosApi);
-
-        setApiStatus("Conectado a Google Sheets · maestros cargados");
-      } catch (err) {
-        console.error(err);
-        setApiStatus(`Error API: ${err.message}`);
-      }
-    }
-
-    cargarSheets();
-  }, []);
-
 
   // Stats
   const stats = useMemo(() => {
@@ -569,469 +297,44 @@ function App() {
     if (fTienda!=="todos" && c.tienda!==fTienda) return false;
     if (fTaller!=="todos" && c.taller_id!==fTaller) return false;
     if (fTipo!=="todos"   && c.tipo!==fTipo)     return false;
-    if (!inDateRange(c.fecha_caso, casosDesde, casosHasta)) return false;
-    if (search && !`${c.id || ""} ${c.ost || ""} ${c.local || ""} ${c.codsap || ""} ${c.producto || ""} ${c.cod_falla || ""} ${c.falla || ""} ${c.guia_recojo || ""} ${c.guia_envio || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !`${c.ost} ${c.local} ${c.producto} ${c.falla}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [casos, fCierre, fTienda, fTaller, fTipo, search, casosDesde, casosHasta]);
+  }), [casos, fCierre, fTienda, fTaller, fTipo, search]);
 
-  const provinciasTalleres = useMemo(() => {
-    return [...new Set(talleresList.map(t => t.provincia).filter(Boolean))].sort();
-  }, [talleresList]);
-
-  const talleresFiltrados = useMemo(() => {
-    const q = searchTaller.trim().toLowerCase();
-    return talleresList.filter(t => {
-      const provincia = String(t.provincia || "");
-      const texto = `${t.id || ""} ${t.cod_taller || ""} ${t.nombre || ""} ${provincia} ${t.contacto || ""} ${t.email || ""} ${t.tel || ""}`.toLowerCase();
-      if (fProvinciaTaller !== "todos" && provincia !== fProvinciaTaller) return false;
-      if (q && !texto.includes(q)) return false;
-      return true;
-    });
-  }, [talleresList, searchTaller, fProvinciaTaller]);
-
-  const pedidosFiltrados = useMemo(() => {
-    const q = pedidosSearch.trim().toLowerCase();
-    return pedidos.filter(p => {
-      if (!inDateRange(p.fecha_solicitud, pedidosDesde, pedidosHasta)) return false;
-      const taller = getTaller(p.taller_id);
-      const itemsText = (p.items || []).map(it => `${it.cod_repuesto || ""} ${it.repuesto || ""} ${it.referencia || ""} ${it.codsap || ""} ${it.producto || ""}`).join(" ");
-      const texto = `${p.id || ""} ${p.num_pedido || ""} ${p.tipo_pedido || ""} ${p.guia || ""} ${p.transportista || ""} ${taller?.nombre || ""} ${taller?.provincia || ""} ${itemsText}`.toLowerCase();
-      if (q && !texto.includes(q)) return false;
-      return true;
-    });
-  }, [pedidos, pedidosSearch, pedidosDesde, pedidosHasta, maestros.talleres]);
-
-  function aplicarRango(tipo, scope) {
-    const now = new Date();
-    let desde = "", hasta = "";
-    if (tipo === "semana") { desde = dateOnly(startOfWeek(now)); hasta = dateOnly(endOfWeek(now)); }
-    if (tipo === "mes") { desde = dateOnly(startOfMonth(now)); hasta = dateOnly(endOfMonth(now)); }
-    if (tipo === "limpiar") { desde = ""; hasta = ""; }
-    if (scope === "casos") { setCasosDesde(desde); setCasosHasta(hasta); }
-    if (scope === "pedidos") { setPedidosDesde(desde); setPedidosHasta(hasta); }
-  }
-
-  const SLA_CASOS = {
-    pendiente_recojo: 3,
-    en_taller: 3,
-    en_reparacion: 4,
-    listo_envio: 2,
-    cambio_entregado: 5,
-  };
-  const SLA_PEDIDOS = { pendiente_despacho: 2, en_transito: 3 };
-
-  function fechaBaseAlertaCaso(c) {
-    if (!c) return "";
-    if (c.estado === "pendiente_recojo") return c.fecha_caso || "";
-    if (c.estado === "en_taller") return c.fecha_llegada_taller || c.fecha_recojo || c.fecha_caso || "";
-    if (c.estado === "en_reparacion") return c.fecha_inicio_reparacion || c.fecha_llegada_taller || c.fecha_caso || "";
-    if (c.estado === "listo_envio") return c.fecha_listo_envio || c.fecha_llegada_taller || c.fecha_caso || "";
-    if (c.estado === "cambio_entregado") return c.fecha_cambio_entregado || c.fecha_recojo || c.fecha_caso || "";
-    return "";
-  }
-
-  function evaluarAlertaCaso(c) {
-    const sla = SLA_CASOS[c?.estado];
-    if (!sla || isCerrado(c)) return null;
-    const base = fechaBaseAlertaCaso(c);
-    if (!base) return null;
-    const dias = diasEntre(base, today());
-    const nivel = dias >= sla ? "rojo" : dias >= Math.max(sla - 1, 0) ? "amarillo" : "verde";
-    return { tipo:"caso", id:c.id, ref:c.ost || c.id, estado:c.estado, dias, sla, nivel, base, data:c };
-  }
-
-  function evaluarAlertaPedido(p) {
-    const sla = SLA_PEDIDOS[p?.estado];
-    if (!sla || p.estado === "recibido_taller") return null;
-    const base = p.estado === "en_transito" ? (p.fecha_despacho || p.fecha_solicitud) : p.fecha_solicitud;
-    if (!base) return null;
-    const dias = diasEntre(base, today());
-    const nivel = dias >= sla ? "rojo" : dias >= Math.max(sla - 1, 0) ? "amarillo" : "verde";
-    return { tipo:"pedido", id:p.id, ref:p.num_pedido || p.id, estado:p.estado, dias, sla, nivel, base, data:p };
-  }
-
-  const alertas = useMemo(() => {
-    const aCasos = casos.map(evaluarAlertaCaso).filter(Boolean);
-    const aPedidos = pedidos.map(evaluarAlertaPedido).filter(Boolean);
-    return [...aCasos, ...aPedidos].sort((a,b) => {
-      const rank = { rojo:0, amarillo:1, verde:2 };
-      return rank[a.nivel] - rank[b.nivel] || b.dias - a.dias;
-    });
-  }, [casos, pedidos]);
-
-  const alertasCriticas = alertas.filter(a => a.nivel === "rojo").length;
-  const alertasAdvertencia = alertas.filter(a => a.nivel === "amarillo").length;
-  const alertasOk = alertas.filter(a => a.nivel === "verde").length;
-
-  function findProductoByText(text) {
-    const q = String(text || "").trim().toLowerCase();
-    if (!q) return null;
-    // Solo selecciona si hay coincidencia exacta.
-    // Esto evita que la app complete un producto mientras todavía estás escribiendo.
-    return productosList.find(p => {
-      const cod = String(p.codsap || "").toLowerCase();
-      const prod = String(p.producto || "").toLowerCase();
-      const label = productLabel(p).toLowerCase();
-      return q === cod || q === prod || q === label;
-    }) || null;
-  }
-
-  function escribirProductoEnForm(base, typed) {
-    return { ...base, producto:typed, codsap:"", familia:"" };
-  }
-
-  function aplicarProductoAForm(base, typed) {
-    const p = findProductoByText(typed);
-    if (p) return { ...base, codsap:p.codsap || "", producto:p.producto || productValue(p) || typed, familia:p.familia || "" };
-    return { ...base, producto:typed, codsap:"", familia:"" };
-  }
-
-  function findFallaByText(text) {
-    const q = String(text || "").trim().toLowerCase();
-    if (!q) return null;
-    return fallasList.find(f => {
-      const cod = String(f.cod_falla || "").toLowerCase();
-      const falla = String(f.falla || "").toLowerCase();
-      const label = fallaLabel(f).toLowerCase();
-      return q === cod || q === falla || q === label;
-    }) || null;
-  }
-
-  function escribirFallaEnForm(base, typed) {
-    return { ...base, falla:typed, cod_falla:"", categoria_falla:"" };
-  }
-
-  function aplicarFallaAForm(base, typed) {
-    const f = findFallaByText(typed);
-    if (f) return { ...base, cod_falla:f.cod_falla || "", falla:f.falla || fallaValue(f) || typed, categoria_falla:f.categoria || "" };
-    return { ...base, falla:typed, cod_falla:"", categoria_falla:"" };
-  }
-
-  function findTiendaByText(text) {
-    const q = String(text || "").trim().toLowerCase();
-    if (!q) return null;
-    return tiendasList.find(t => {
-      const cod = String(t.cod_tienda || "").toLowerCase();
-      const tienda = String(t.tienda || "").toLowerCase();
-      const local = String(t.local || "").toLowerCase();
-      const label = tiendaLabel(t).toLowerCase();
-      return q === cod || q === tienda || q === local || q === label;
-    }) || null;
-  }
-
-  function escribirTiendaEnForm(base, typed) {
-    return { ...base, tienda:typed, cod_tienda:"" };
-  }
-
-  function aplicarTiendaAForm(base, typed) {
-    const t = findTiendaByText(typed);
-    if (t) return { ...base, cod_tienda:t.cod_tienda || "", tienda:t.tienda || tiendaValue(t) || typed, local:t.local || base.local || "" };
-    return { ...base, tienda:typed, cod_tienda:"" };
-  }
-
-  function findTallerByText(text) {
-    const q = String(text || "").trim().toLowerCase();
-    if (!q) return null;
-    return talleresList.find(t => {
-      const cod = String(t.id || t.cod_taller || "").toLowerCase();
-      const nombre = String(t.nombre || "").toLowerCase();
-      const provincia = String(t.provincia || "").toLowerCase();
-      const label = `${cod} - ${nombre} ${provincia}`.toLowerCase();
-      return q === cod || q === nombre || q === label;
-    }) || null;
-  }
-
-  function escribirTallerEnForm(base, typed) {
-    return { ...base, taller:typed, taller_id:"", cod_taller:"" };
-  }
-
-  function aplicarTallerAForm(base, typed) {
-    const t = findTallerByText(typed);
-    if (t) return { ...base, taller_id:t.id || t.cod_taller || "", cod_taller:t.id || t.cod_taller || "", taller:t.nombre || typed };
-    return { ...base, taller:typed, taller_id:"", cod_taller:"" };
-  }
-
-  function findTransportistaByText(text) {
-    const q = String(text || "").trim().toLowerCase();
-    if (!q) return null;
-    return transportistasList.find(t => {
-      const value = String(transportistaValue(t) || "").toLowerCase();
-      const label = transportistaLabel(t).toLowerCase();
-      return q === value || q === label;
-    }) || null;
-  }
-
-  function aplicarTransportistaText(typed) {
-    const t = findTransportistaByText(typed);
-    return t ? transportistaValue(t) : typed;
-  }
-
-  function abrirEditarCaso(caso) {
-    setEditCaso({ ...caso });
-  }
-
-  async function guardarEdicionCaso() {
-    if (!editCaso?.id) return;
-    const actualizado = { ...editCaso };
-    setCasos(prev => prev.map(c => c.id === actualizado.id ? actualizado : c));
-    setSelCaso(prev => prev?.id === actualizado.id ? actualizado : prev);
-    setEditCaso(null);
-    try {
-      await apiPost("updateCaso", actualizado);
-      if (apiEnabled()) setApiStatus("Caso editado y actualizado en Sheets");
-    } catch (err) {
-      console.error(err);
-      setApiStatus(`No se pudo editar el caso: ${err.message}`);
-    }
-  }
-
-  async function crearCaso() {
-    const nuevoCaso = { ...formCaso, id:`OST-${formCaso.ost||genId("C",casos)}`, estado:"caso_recibido", dias_solucion:null, dias_reparacion:null };
-    setCasos(prev => [...prev, nuevoCaso]);
+  function crearCaso() {
+    setCasos([...casos, { ...formCaso, id:`OST-${formCaso.ost||genId("C",casos)}`, estado:"caso_recibido", dias_solucion:null, dias_reparacion:null }]);
     setShowNewCaso(false); setFormCaso(blankCaso);
-
-    try {
-      await apiPost("saveCaso", nuevoCaso);
-      if (apiEnabled()) setApiStatus("Caso guardado en Sheets");
-    } catch (err) {
-      console.error(err);
-      setApiStatus(`No se pudo guardar el caso: ${err.message}`);
-    }
   }
 
-  function estadoRequiereGuiaCaso(nuevoEstado) {
-    return nuevoEstado === "en_ruta" || nuevoEstado === "enviado_tienda";
+  function actualizarEstado(id, nuevoEstado) {
+    setCasos(prev=>prev.map(c=>{
+      if(c.id!==id) return c;
+      const up = { estado:nuevoEstado };
+      if(nuevoEstado==="regularizado"||nuevoEstado==="ingresado_sap"){ up.fecha_cierre=today(); up.dias_solucion=diasEntre(c.fecha_caso,today()); }
+      if(nuevoEstado==="listo_envio"&&c.fecha_llegada_taller) up.dias_reparacion=diasEntre(c.fecha_llegada_taller,today());
+      return {...c,...up};
+    }));
+    setSelCaso(prev=>prev?.id===id?{...prev,estado:nuevoEstado}:prev);
   }
 
-  async function aplicarEstadoCaso(id, nuevoEstado, extra = {}) {
-    const original = casos.find(c => c.id === id);
-    if (!original) return;
-
-    const esEstadoDeCierre = nuevoEstado === "regularizado" || nuevoEstado === "ingresado_sap";
-    if (esEstadoDeCierre && !isCerrado(original)) {
-      const okCerrar = window.confirm(
-        `¿Desea cerrar el ticket ${original.id}?\n\n` +
-        `Al confirmar se registrará la fecha de cierre y los días de solución.\n` +
-        `Esta acción no debe realizarse hasta que el caso esté completamente regularizado.`
-      );
-      if (!okCerrar) return;
-    }
-
-    const up = { estado:nuevoEstado, ...extra };
-    if (nuevoEstado === "pendiente_recojo" && original.tipo === "DEVOLUCION") up.modalidad_devolucion = "RECOJO_PROPIO";
-    if (nuevoEstado === "en_ruta" && !up.fecha_recojo && !original.fecha_recojo) up.fecha_recojo = today();
-    if (nuevoEstado === "en_taller" && !up.fecha_llegada_taller && !original.fecha_llegada_taller) up.fecha_llegada_taller = today();
-    if (nuevoEstado === "en_reparacion" && !up.fecha_inicio_reparacion && !original.fecha_inicio_reparacion) up.fecha_inicio_reparacion = today();
-    if (nuevoEstado === "listo_envio" && !up.fecha_listo_envio && !original.fecha_listo_envio) up.fecha_listo_envio = today();
-    if (nuevoEstado === "cambio_entregado" && !up.fecha_cambio_entregado && !original.fecha_cambio_entregado) up.fecha_cambio_entregado = today();
-    if (nuevoEstado === "enviado_tienda" && !up.fecha_envio_tienda && !original.fecha_envio_tienda) up.fecha_envio_tienda = today();
-    if(nuevoEstado==="regularizado"||nuevoEstado==="ingresado_sap"){
-      up.fecha_cierre=today();
-      up.dias_solucion=diasEntre(original.fecha_caso,today());
-    }
-    if(nuevoEstado==="listo_envio"&&original.fecha_llegada_taller) {
-      up.dias_reparacion=diasEntre(original.fecha_llegada_taller,today());
-    }
-
-    const actualizado = { ...original, ...up };
-
-    setCasos(prev=>prev.map(c=>c.id===id?actualizado:c));
-    setSelCaso(prev=>prev?.id===id?actualizado:prev);
-
-    try {
-      await apiPost("updateCaso", actualizado);
-      if (apiEnabled()) setApiStatus("Caso actualizado en Sheets");
-    } catch (err) {
-      console.error(err);
-      setApiStatus(`No se pudo actualizar el caso: ${err.message}`);
-    }
-  }
-
-  async function actualizarEstado(id, nuevoEstado) {
-    const original = casos.find(c => c.id === id);
-    if (!original) return;
-
-    if (nuevoEstado === "ellos_envian") {
-      setCartaModal({
-        id,
-        nuevoEstado,
-        fecha: original.fecha_carta_autorizacion || today(),
-        obs:"",
-      });
-      return;
-    }
-
-    if (estadoRequiereGuiaCaso(nuevoEstado)) {
-      const esRecojo = nuevoEstado === "en_ruta";
-      setLogisticaModal({
-        tipo:"caso",
-        id,
-        nuevoEstado,
-        titulo: esRecojo ? "Confirmar recojo" : "Confirmar envío a tienda",
-        guiaLabel: esRecojo ? "N° guía de recojo" : "N° guía de envío",
-        transportista: esRecojo ? (original.transportista || "") : (original.transportista_envio || original.transportista || ""),
-        guia: esRecojo ? (original.guia_recojo || "") : (original.guia_envio || ""),
-        obs:"",
-        fecha: today(),
-      });
-      return;
-    }
-
-    await aplicarEstadoCaso(id, nuevoEstado);
-  }
-
-  async function confirmarCartaAutorizacion() {
-    if (!cartaModal) return;
-    if (!cartaModal.fecha) { alert("Ingresa la fecha de envío de la carta de autorización."); return; }
-    const original = casos.find(c=>c.id===cartaModal.id);
-    const extra = {
-      modalidad_devolucion:"ELLOS_ENVIAN",
-      fecha_carta_autorizacion:cartaModal.fecha,
-      obs: cartaModal.obs ? `${(original?.obs || "")} | Carta autorización: ${cartaModal.obs}`.trim() : (original?.obs || "")
-    };
-    const { id, nuevoEstado } = cartaModal;
-    setCartaModal(null);
-    await aplicarEstadoCaso(id, nuevoEstado, extra);
-  }
-
-  async function confirmarLogistica() {
-    if (!logisticaModal) return;
-    const guia = String(logisticaModal.guia || "").trim();
-    const transportista = aplicarTransportistaText(String(logisticaModal.transportista || "").trim());
-    if (!guia) { alert("Ingresa el número de guía para continuar."); return; }
-    if (!transportista) { alert("Ingresa o selecciona el transportista para continuar."); return; }
-
-    if (logisticaModal.tipo === "caso") {
-      const esRecojo = logisticaModal.nuevoEstado === "en_ruta";
-      const extra = esRecojo
-        ? { transportista, guia_recojo:guia, fecha_recojo:logisticaModal.fecha || today(), obs: logisticaModal.obs ? `${(casos.find(c=>c.id===logisticaModal.id)?.obs || "")} | Recojo: ${logisticaModal.obs}`.trim() : (casos.find(c=>c.id===logisticaModal.id)?.obs || "") }
-        : { transportista_envio:transportista, guia_envio:guia, fecha_envio_tienda:logisticaModal.fecha || today(), obs: logisticaModal.obs ? `${(casos.find(c=>c.id===logisticaModal.id)?.obs || "")} | Envío: ${logisticaModal.obs}`.trim() : (casos.find(c=>c.id===logisticaModal.id)?.obs || "") };
-      const { id, nuevoEstado } = logisticaModal;
-      setLogisticaModal(null);
-      await aplicarEstadoCaso(id, nuevoEstado, extra);
-      return;
-    }
-
-    if (logisticaModal.tipo === "pedido") {
-      const original = pedidos.find(p=>p.id===logisticaModal.id);
-      if (!original) { setLogisticaModal(null); return; }
-      const actualizado = { ...original, estado:logisticaModal.nuevoEstado, guia, transportista, fecha_despacho:logisticaModal.fecha || today() };
-      setPedidos(prev=>prev.map(p=>p.id===actualizado.id?actualizado:p));
-      setSelPedido(prev=>prev?.id===actualizado.id?actualizado:prev);
-      setLogisticaModal(null);
-      try {
-        await apiPost("updatePedido", { ...actualizado, items: undefined });
-        if (apiEnabled()) setApiStatus("Pedido actualizado en Sheets");
-      } catch (err) {
-        console.error(err);
-        setApiStatus(`No se pudo actualizar el pedido: ${err.message}`);
-      }
-    }
-  }
-
-  async function crearPedido() {
+  function crearPedido() {
     const p = { ...formPedido, id:genId("PED",pedidos), estado:"pendiente_despacho", fecha_despacho:"", fecha_recibo_taller:"", guia:"", dias_respuesta:null };
-    setPedidos(prev => [...prev, p]);
+    setPedidos([...pedidos, p]);
     setShowNewPedido(false); setFormPedido(blankPedido);
-
-    try {
-      await apiPost("savePedido", {
-        pedido: { ...p, items: undefined },
-        items: p.items.map((item, index) => ({ ...item, id:`${p.id}-IT-${index+1}`, pedido_id:p.id })),
-      });
-      if (apiEnabled()) setApiStatus("Pedido guardado en Sheets");
-    } catch (err) {
-      console.error(err);
-      setApiStatus(`No se pudo guardar el pedido: ${err.message}`);
-    }
   }
 
-  async function actualizarEstadoPedido(id, estado) {
-    const original = pedidos.find(p=>p.id===id);
-    if (!original) return;
-
-    if (estado === "en_transito") {
-      setLogisticaModal({
-        tipo:"pedido",
-        id,
-        nuevoEstado:estado,
-        titulo:"Despacho de repuesto",
-        guiaLabel:"N° guía de envío de repuesto",
-        transportista: original.transportista || "",
-        guia: original.guia || "",
-        obs:"",
-        fecha: today(),
-      });
-      return;
-    }
-
-    const extra = estado==="recibido_taller"
-      ? { fecha_recibo_taller:today(), dias_respuesta:diasEntre(original.fecha_solicitud,today()) }
-      : {};
-
-    const actualizado = { ...original, estado, ...extra };
-    setPedidos(prev=>prev.map(p=>p.id===id?actualizado:p));
-    setSelPedido(prev=>prev?.id===id?actualizado:prev);
-
-    try {
-      await apiPost("updatePedido", { ...actualizado, items: undefined });
-      if (apiEnabled()) setApiStatus("Pedido actualizado en Sheets");
-    } catch (err) {
-      console.error(err);
-      setApiStatus(`No se pudo actualizar el pedido: ${err.message}`);
-    }
-  }
-
-  function ingresarLogin(e) {
-    e?.preventDefault?.();
-    const email = String(loginEmail || "").trim().toLowerCase();
-    setLoginError("");
-    if (!email) { setLoginError("Ingresa tu correo empresarial."); return; }
-    if (!usuarios.length) { setLoginError("No hay usuarios cargados en la hoja USUARIOS. Agrega tu correo y recarga el HTML."); return; }
-    const user = usuarios.find(u => u.email === email && u.activo !== "NO");
-    if (!user) { setLoginError("Correo no autorizado o usuario inactivo. Verifica la hoja USUARIOS."); return; }
-    setCurrentUser(user);
-    localStorage.setItem("postventa_user", JSON.stringify(user));
-  }
-
-  function cerrarSesion() {
-    localStorage.removeItem("postventa_user");
-    setCurrentUser(null);
-    setLoginEmail("");
+  function actualizarEstadoPedido(id, estado) {
+    const extra = estado==="en_transito" ? { fecha_despacho:today() } : estado==="recibido_taller" ? { fecha_recibo_taller:today(), dias_respuesta:diasEntre(pedidos.find(p=>p.id===id)?.fecha_solicitud,today()) } : {};
+    setPedidos(prev=>prev.map(p=>p.id===id?{...p,estado,...extra}:p));
+    setSelPedido(prev=>prev?.id===id?{...prev,estado,...extra}:prev);
   }
 
   const nav = [
     { id:"dashboard", label:"Dashboard",   icon:"◈" },
-    { id:"alertas",   label:`Alertas${alertasCriticas ? " ("+alertasCriticas+")" : ""}`, icon:"⚠" },
-    { id:"usuarios",  label:"Usuarios",    icon:"◌" },
     { id:"casos",     label:"Casos / OST", icon:"◉" },
     { id:"pedidos",   label:"Pedidos ST",  icon:"◫" },
     { id:"talleres",  label:"Talleres ST", icon:"◎" },
   ];
-
-  if (!currentUser) {
-    return (
-      <div style={{ minHeight:"100vh", background:"radial-gradient(circle at top, #0f2a44 0%, #020817 48%, #020817 100%)", color:"#e2e8f0", fontFamily:"'DM Sans','Segoe UI',sans-serif", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
-        <div style={{ width:"100%", maxWidth:430, background:"#0a1628", border:"1px solid #1e293b", borderRadius:20, padding:32, boxShadow:"0 24px 70px rgba(0,0,0,.45)" }}>
-          <div style={{ marginBottom:26 }}>
-            <div style={{ fontSize:11, color:"#0ea5e9", fontWeight:900, letterSpacing:"0.18em", textTransform:"uppercase" }}>Postventa</div>
-            <div style={{ fontSize:26, color:"#f1f5f9", fontWeight:900, marginTop:5 }}>Control Hub</div>
-            <div style={{ fontSize:13, color:"#64748b", marginTop:6 }}>Acceso autorizado para gestión de casos, pedidos y alertas SLA.</div>
-          </div>
-          <form onSubmit={ingresarLogin}>
-            <label style={{ display:"block", color:"#94a3b8", fontSize:12, fontWeight:800, marginBottom:7, textTransform:"uppercase", letterSpacing:".06em" }}>Correo de usuario</label>
-            <input autoFocus type="email" placeholder="achapellin@mapalsa.com" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} style={{ ...S.inp, padding:"12px 14px", fontSize:14, marginBottom:12 }} />
-            {loginError && <div style={{ background:"#ef444422", border:"1px solid #ef444455", color:"#fecaca", borderRadius:10, padding:"10px 12px", fontSize:12, marginBottom:12 }}>{loginError}</div>}
-            <button type="submit" style={{ ...S.btn("#0ea5e9"), width:"100%", padding:"12px 18px", fontSize:14 }}>Ingresar</button>
-          </form>
-          <div style={{ marginTop:18, paddingTop:16, borderTop:"1px solid #1e293b", color:"#475569", fontSize:11, lineHeight:1.5 }}>
-            Estado API: {apiStatus}<br/>
-            El correo debe existir en la hoja <b>USUARIOS</b> con ACTIVO = SI.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ minHeight:"100vh", background:"#020817", color:"#e2e8f0", fontFamily:"'DM Sans','Segoe UI',sans-serif", display:"flex" }}>
@@ -1049,14 +352,6 @@ function App() {
             <span style={{ fontSize:15 }}>{n.icon}</span>{n.label}
           </button>
         ))}
-        <div style={{ marginTop:18, marginLeft:18, marginRight:18, padding:"12px", background:"#020817", border:"1px solid #1e293b", borderRadius:12 }}>
-          <div style={{ color:"#f1f5f9", fontWeight:800, fontSize:12, overflow:"hidden", textOverflow:"ellipsis" }}>{currentUser.nombre || currentUser.email}</div>
-          <div style={{ color:"#64748b", fontSize:10, marginTop:2, overflow:"hidden", textOverflow:"ellipsis" }}>{currentUser.email}</div>
-          <div style={{ marginTop:8, display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-            <span style={S.tag(currentUser.rol === "ADMIN" ? "#0ea5e9" : currentUser.rol === "OPERADOR" ? "#8b5cf6" : "#64748b")}>{currentUser.rol}</span>
-            <button onClick={cerrarSesion} style={{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:11, fontWeight:700 }}>Salir</button>
-          </div>
-        </div>
         <div style={{ marginTop:"auto", padding:"16px 18px", borderTop:"1px solid #1e293b" }}>
           <div style={{ fontSize:11, color:"#475569", marginBottom:8 }}>ESTADO ACTUAL</div>
           {[
@@ -1065,7 +360,6 @@ function App() {
             { label:"Listo p/envío",  val:stats.listo_envio,c:"#f59e0b" },
             { label:"Cambios p/SAP",  val:stats.cambio_sap, c:"#8b5cf6" },
             { label:"Pedidos pendientes",val:stats.rep_pend,c:"#f59e0b" },
-            { label:"Alertas vencidas",val:alertasCriticas,c:"#ef4444" },
           ].map(s=>(
             <div key={s.label} style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
               <span style={{ color:"#64748b", fontSize:11 }}>{s.label}</span>
@@ -1077,9 +371,6 @@ function App() {
 
       {/* MAIN */}
       <main style={{ flex:1, overflow:"auto", padding:28 }}>
-        <div style={{ marginBottom:12, color:apiStatus.startsWith("Error") || apiStatus.startsWith("No se pudo") ? "#ef4444" : "#64748b", fontSize:12, fontWeight:700 }}>
-          {apiStatus}
-        </div>
 
         {/* ══ DASHBOARD ══ */}
         {view==="dashboard" && (
@@ -1141,85 +432,6 @@ function App() {
           </div>
         )}
 
-        {/* ══ ALERTAS ══ */}
-        {view==="alertas" && (
-          <div>
-            <h1 style={{ color:"#f1f5f9", fontSize:22, fontWeight:800, marginBottom:4 }}>Panel de alertas SLA</h1>
-            <p style={{ color:"#475569", fontSize:13, marginBottom:20 }}>Semáforo calculado según los días definidos para cada estado operativo.</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:14, marginBottom:20 }}>
-              {[
-                { label:"Vencidas", val:alertasCriticas, c:"#ef4444" },
-                { label:"Por vencer", val:alertasAdvertencia, c:"#f59e0b" },
-                { label:"Dentro de plazo", val:alertasOk, c:"#10b981" },
-                { label:"Total monitoreadas", val:alertas.length, c:"#0ea5e9" },
-              ].map(x=>(
-                <div key={x.label} style={S.card}>
-                  <div style={{ fontSize:28, fontWeight:800, color:x.c }}>{x.val}</div>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#cbd5e1", marginTop:3 }}>{x.label}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"90px 1fr 150px 100px 100px 120px", gap:0, borderBottom:"1px solid #1e293b" }}>
-                {["Nivel","Referencia","Estado","Días","SLA","Fecha base"].map(h=><div key={h} style={{ padding:"10px 12px", color:"#64748b", fontSize:11, fontWeight:800, textTransform:"uppercase" }}>{h}</div>)}
-              </div>
-              {alertas.map(a=>{
-                const color = a.nivel === "rojo" ? "#ef4444" : a.nivel === "amarillo" ? "#f59e0b" : "#10b981";
-                const titulo = a.tipo === "caso" ? `${a.data.id || ""} · ${a.data.local || ""}` : `${a.data.id || ""} · ${getTaller(a.data.taller_id)?.nombre || ""}`;
-                return (
-                  <div key={`${a.tipo}-${a.id}`} onClick={()=>{ a.tipo==="caso" ? setSelCaso(a.data) : setSelPedido(a.data); }} style={{ display:"grid", gridTemplateColumns:"90px 1fr 150px 100px 100px 120px", gap:0, borderBottom:"1px solid #1e293b", cursor:"pointer" }}>
-                    <div style={{ padding:"11px 12px" }}><span style={S.tag(color)}>{a.nivel === "rojo" ? "Vencida" : a.nivel === "amarillo" ? "Por vencer" : "OK"}</span></div>
-                    <div style={{ padding:"11px 12px" }}><div style={{ color:"#f1f5f9", fontWeight:700, fontSize:13 }}>{titulo}</div><div style={{ color:"#64748b", fontSize:11 }}>{a.tipo.toUpperCase()} · {a.ref}</div></div>
-                    <div style={{ padding:"11px 12px", color:"#94a3b8", fontSize:12 }}>{a.estado}</div>
-                    <div style={{ padding:"11px 12px", color, fontWeight:800 }}>{a.dias}d</div>
-                    <div style={{ padding:"11px 12px", color:"#94a3b8" }}>{a.sla}d</div>
-                    <div style={{ padding:"11px 12px", color:"#64748b", fontSize:12 }}>{a.base}</div>
-                  </div>
-                );
-              })}
-              {alertas.length===0 && <div style={{ textAlign:"center", color:"#334155", padding:45 }}>Sin casos ni pedidos bajo monitoreo SLA.</div>}
-            </div>
-            <div style={{ ...S.card, marginTop:18 }}>
-              <h2 style={{ color:"#f1f5f9", fontSize:15, marginTop:0 }}>Reglas configuradas</h2>
-              <div style={{ color:"#94a3b8", fontSize:13, lineHeight:1.8 }}>
-                Casos: Pendiente recojo 3d · En taller/MAPALSA 3d · En reparación 4d · Listo/Pend. envío 2d · Cambio entregado pendiente SAP 5d.<br/>
-                Pedidos: Pendiente despacho 2d · En tránsito 3d. Estados “sin alerta” no se muestran en este panel.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ USUARIOS ══ */}
-        {view==="usuarios" && (
-          <div>
-            <h1 style={{ color:"#f1f5f9", fontSize:22, fontWeight:800, marginBottom:4 }}>Control de usuarios</h1>
-            <p style={{ color:"#475569", fontSize:13, marginBottom:20 }}>Pantalla base para operar roles. En esta versión local el control es visual; para bloqueo real por usuario se debe publicar con validación de correo en Apps Script.</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))", gap:14, marginBottom:20 }}>
-              {[
-                { rol:"ADMIN", desc:"Crea, edita, cierra y administra maestros." },
-                { rol:"OPERADOR", desc:"Crea casos, pedidos y actualiza estados." },
-                { rol:"CONSULTA", desc:"Solo visualiza información y alertas." },
-              ].map(r=>(
-                <div key={r.rol} style={S.card}>
-                  <div style={{ color:"#0ea5e9", fontSize:18, fontWeight:800 }}>{r.rol}</div>
-                  <div style={{ color:"#94a3b8", fontSize:13, marginTop:6 }}>{r.desc}</div>
-                </div>
-              ))}
-            </div>
-            <div style={S.card}>
-              <h2 style={{ color:"#f1f5f9", fontSize:15, marginTop:0 }}>Estructura sugerida para la hoja USUARIOS</h2>
-              <div style={{ overflowX:"auto" }}>
-                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-                  <thead><tr>{["EMAIL","NOMBRE","ROL","ACTIVO"].map(h=><th key={h} style={{ textAlign:"left", padding:10, color:"#64748b", borderBottom:"1px solid #334155" }}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {["a.eduardochapellin@gmail.com"].map(u=><tr key={u}><td style={{ padding:10, color:"#f1f5f9" }}>{u}</td><td style={{ padding:10, color:"#94a3b8" }}>Angel Chapellin</td><td style={{ padding:10 }}><span style={S.tag("#0ea5e9")}>ADMIN</span></td><td style={{ padding:10, color:"#10b981", fontWeight:800 }}>SI</td></tr>)}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ══ CASOS ══ */}
         {view==="casos" && (
           <div>
@@ -1231,7 +443,7 @@ function App() {
               <button onClick={()=>setShowNewCaso(true)} style={S.btn()}>+ Nuevo caso</button>
             </div>
             <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-              <input placeholder="Buscar OST, local, producto, falla o guía..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...S.inp, width:250 }} />
+              <input placeholder="Buscar OST, local, producto, falla..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...S.inp, width:250 }} />
               <div style={{ display:"flex", background:"#1e293b", borderRadius:8, border:"1px solid #334155", overflow:"hidden" }}>
                 {[["activos","Activos"],["cerrados","Cerrados"],["todos","Todos"]].map(([v,l])=>(
                   <button key={v} onClick={()=>setFCierre(v)} style={{ padding:"8px 14px", border:"none", background:fCierre===v?"#0ea5e9":"transparent", color:fCierre===v?"#fff":"#64748b", cursor:"pointer", fontSize:12, fontWeight:600 }}>{l}</button>
@@ -1243,26 +455,16 @@ function App() {
               </select>
               <select value={fTienda} onChange={e=>setFTienda(e.target.value)} style={{ ...S.inp, width:"auto" }}>
                 <option value="todos">Todas las tiendas</option>
-                {tiendasList.map(t=><option key={tiendaValue(t)} value={tiendaValue(t)}>{tiendaLabel(t)}</option>)}
+                {TIENDAS.map(t=><option key={t}>{t}</option>)}
               </select>
               <select value={fTaller} onChange={e=>setFTaller(e.target.value)} style={{ ...S.inp, width:"auto" }}>
                 <option value="todos">Todos los talleres</option>
-                {talleresList.map(t=><option key={t.id || t.cod_taller || t.nombre} value={t.id || t.cod_taller}>{t.nombre || t.label || t.id}</option>)}
+                {TALLERES.map(t=><option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
-            </div>
-            <div style={{ ...S.card, padding:"12px 14px", marginBottom:16, display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-              <span style={{ color:"#64748b", fontSize:12, fontWeight:800, textTransform:"uppercase" }}>Fecha caso</span>
-              <input type="date" value={casosDesde} onChange={e=>setCasosDesde(e.target.value)} style={{ ...S.inp, width:155 }} />
-              <span style={{ color:"#475569", fontSize:12 }}>hasta</span>
-              <input type="date" value={casosHasta} onChange={e=>setCasosHasta(e.target.value)} style={{ ...S.inp, width:155 }} />
-              <button onClick={()=>aplicarRango("semana","casos")} style={{ ...S.btnO, padding:"8px 12px" }}>Esta semana</button>
-              <button onClick={()=>aplicarRango("mes","casos")} style={{ ...S.btnO, padding:"8px 12px" }}>Este mes</button>
-              <button onClick={()=>aplicarRango("limpiar","casos")} style={{ ...S.btnO, padding:"8px 12px" }}>Limpiar fechas</button>
-              {(casosDesde || casosHasta) && <span style={{ color:"#0ea5e9", fontSize:12, fontWeight:700 }}>Rango activo: {casosDesde || "inicio"} → {casosHasta || "hoy"}</span>}
             </div>
             <div style={{ display:"grid", gap:8 }}>
               {casosFiltrados.map(c=>{
-                const taller=getTaller(c.taller_id);
+                const taller=tallerById(c.taller_id);
                 const diasAbierto=!isCerrado(c)?diasEntre(c.fecha_caso,today()):null;
                 return (
                   <div key={c.id} onClick={()=>setSelCaso(c)}
@@ -1273,16 +475,14 @@ function App() {
                       <div style={{ color:"#0ea5e9", fontWeight:800, fontSize:13 }}>{c.id}</div>
                       <div style={{ color:"#334155", fontSize:11 }}>{c.fecha_caso}</div>
                       {diasAbierto!==null && <div style={{ color:diasAbierto>30?"#ef4444":diasAbierto>15?"#f59e0b":"#64748b", fontSize:10, fontWeight:700, marginTop:2 }}>{diasAbierto}d abierto</div>}
-                      {(() => { const al = evaluarAlertaCaso(c); return al && al.nivel !== "verde" ? <div style={{ color:al.nivel==="rojo"?"#ef4444":"#f59e0b", fontSize:10, fontWeight:800, marginTop:2 }}>SLA {al.dias}/{al.sla}d</div> : null; })()}
                     </div>
                     <div>
                       <div style={{ color:"#f1f5f9", fontWeight:600, fontSize:13 }}>{c.local}</div>
                       <div style={{ marginTop:3 }}><TipoBadge tipo={c.tipo} /></div>
                     </div>
                     <div>
-                      <div style={{ color:"#cbd5e1", fontSize:13 }}>{c.codsap ? `${c.codsap} - ${c.producto}` : c.producto}</div>
+                      <div style={{ color:"#cbd5e1", fontSize:13 }}>{c.producto}</div>
                       {c.falla && <div style={{ color:"#475569", fontSize:11, marginTop:2 }}>{c.falla}</div>}
-                      {(c.guia_recojo || c.guia_envio) && <div style={{ color:"#0ea5e9", fontSize:10, marginTop:2 }}>Guía: {c.guia_recojo || c.guia_envio}</div>}
                     </div>
                     <div style={{ color:"#64748b", fontSize:12 }}>
                       {c.tipo==="SERVICIO TECNICO" && taller ? <><div style={{ color:"#94a3b8" }}>{taller.nombre}</div><div style={{ fontSize:11, color:"#334155" }}>{taller.provincia}</div></> : <span style={{ color:"#475569" }}>{c.transportista||"—"}</span>}
@@ -1302,22 +502,9 @@ function App() {
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
               <div>
                 <h1 style={{ color:"#f1f5f9", fontSize:22, fontWeight:800, marginBottom:3 }}>Pedidos de Talleres</h1>
-                <p style={{ color:"#475569", fontSize:13 }}>{pedidosFiltrados.length} resultado(s) · Los talleres solicitan → tú despachas.</p>
+                <p style={{ color:"#475569", fontSize:13 }}>Los talleres solicitan → tú despachas. Seguimiento de tiempos de respuesta.</p>
               </div>
               <button onClick={()=>setShowNewPedido(true)} style={S.btn("#8b5cf6")}>+ Registrar pedido</button>
-            </div>
-            <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
-              <input placeholder="Buscar pedido, taller, repuesto o guía..." value={pedidosSearch} onChange={e=>setPedidosSearch(e.target.value)} style={{ ...S.inp, width:280 }} />
-            </div>
-            <div style={{ ...S.card, padding:"12px 14px", marginBottom:16, display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-              <span style={{ color:"#64748b", fontSize:12, fontWeight:800, textTransform:"uppercase" }}>Fecha solicitud</span>
-              <input type="date" value={pedidosDesde} onChange={e=>setPedidosDesde(e.target.value)} style={{ ...S.inp, width:155 }} />
-              <span style={{ color:"#475569", fontSize:12 }}>hasta</span>
-              <input type="date" value={pedidosHasta} onChange={e=>setPedidosHasta(e.target.value)} style={{ ...S.inp, width:155 }} />
-              <button onClick={()=>aplicarRango("semana","pedidos")} style={{ ...S.btnO, padding:"8px 12px" }}>Esta semana</button>
-              <button onClick={()=>aplicarRango("mes","pedidos")} style={{ ...S.btnO, padding:"8px 12px" }}>Este mes</button>
-              <button onClick={()=>aplicarRango("limpiar","pedidos")} style={{ ...S.btnO, padding:"8px 12px" }}>Limpiar fechas</button>
-              {(pedidosDesde || pedidosHasta) && <span style={{ color:"#8b5cf6", fontSize:12, fontWeight:700 }}>Rango activo: {pedidosDesde || "inicio"} → {pedidosHasta || "hoy"}</span>}
             </div>
             <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap" }}>
               {ESTADOS_REP.map(e=>{
@@ -1338,8 +525,8 @@ function App() {
               </div>
             </div>
             <div style={{ display:"grid", gap:10 }}>
-              {pedidosFiltrados.map(p=>{
-                const taller=getTaller(p.taller_id);
+              {pedidos.map(p=>{
+                const taller=tallerById(p.taller_id);
                 const totalItems = p.items.reduce((a,i)=>a+i.cantidad,0);
                 return (
                   <div key={p.id} onClick={()=>setSelPedido(p)}
@@ -1376,7 +563,6 @@ function App() {
                   </div>
                 );
               })}
-              {pedidosFiltrados.length===0 && <div style={{ textAlign:"center", color:"#334155", padding:50, ...S.card }}>Sin resultados</div>}
             </div>
           </div>
         )}
@@ -1385,24 +571,9 @@ function App() {
         {view==="talleres" && (
           <div>
             <h1 style={{ color:"#f1f5f9", fontSize:22, fontWeight:800, marginBottom:4 }}>Red de talleres autorizados</h1>
-            <p style={{ color:"#475569", fontSize:13, marginBottom:14 }}>{talleresFiltrados.length} de {talleresList.length} talleres registrados a nivel nacional</p>
-            <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-              <input
-                placeholder="Buscar por nombre, código, contacto, teléfono..."
-                value={searchTaller}
-                onChange={e=>setSearchTaller(e.target.value)}
-                style={{ ...S.inp, width:320 }}
-              />
-              <select value={fProvinciaTaller} onChange={e=>setFProvinciaTaller(e.target.value)} style={{ ...S.inp, width:220 }}>
-                <option value="todos">Todas las provincias</option>
-                {provinciasTalleres.map(p=><option key={p} value={p}>{p}</option>)}
-              </select>
-              {(searchTaller || fProvinciaTaller !== "todos") && (
-                <button onClick={()=>{setSearchTaller(""); setFProvinciaTaller("todos");}} style={S.btnO}>Limpiar filtros</button>
-              )}
-            </div>
+            <p style={{ color:"#475569", fontSize:13, marginBottom:20 }}>{TALLERES.length} talleres registrados a nivel nacional</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(295px,1fr))", gap:14 }}>
-              {talleresFiltrados.map(t=>{
+              {TALLERES.map(t=>{
                 const casosT=casos.filter(c=>c.taller_id===t.id);
                 const activos=casosT.filter(c=>!isCerrado(c)).length;
                 const peds=pedidos.filter(p=>p.taller_id===t.id).length;
@@ -1431,7 +602,6 @@ function App() {
                   </div>
                 );
               })}
-              {talleresFiltrados.length===0 && <div style={{ textAlign:"center", color:"#334155", padding:50, ...S.card }}>Sin talleres encontrados con los filtros actuales</div>}
             </div>
           </div>
         )}
@@ -1445,18 +615,16 @@ function App() {
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0 }}>
             <Field label="Tienda"><div style={{ color:"#f1f5f9", fontWeight:600 }}>{selCaso.tienda}</div></Field>
             <Field label="Local"><div style={{ color:"#94a3b8" }}>{selCaso.local}</div></Field>
-            <Field label="Producto"><div style={{ color:"#fbbf24", fontWeight:600 }}>{selCaso.codsap ? `${selCaso.codsap} - ${selCaso.producto}` : selCaso.producto}</div></Field>
+            <Field label="Producto"><div style={{ color:"#fbbf24", fontWeight:600 }}>{selCaso.producto}</div></Field>
             <Field label="Tipo"><TipoBadge tipo={selCaso.tipo} /></Field>
             {selCaso.falla && <Field label="Falla"><div style={{ color:"#ef4444" }}>{selCaso.falla}</div></Field>}
-            {selCaso.tipo==="DEVOLUCION" && selCaso.modalidad_devolucion && <Field label="Modalidad devolución"><div style={{ color:"#14b8a6", fontWeight:600 }}>{selCaso.modalidad_devolucion==="ELLOS_ENVIAN"?"Ellos envían":"Pendiente de recojo"}</div></Field>}
             <Field label="Transportista"><div style={{ color:"#94a3b8" }}>{selCaso.transportista||"—"}</div></Field>
-            {selCaso.tipo==="SERVICIO TECNICO" && <Field label="Taller ST" span2><div style={{ color:"#0ea5e9" }}>{getTaller(selCaso.taller_id)?.nombre||"—"} <span style={{ color:"#334155", fontSize:12 }}>· {getTaller(selCaso.taller_id)?.provincia}</span></div></Field>}
+            {selCaso.tipo==="SERVICIO TECNICO" && <Field label="Taller ST" span2><div style={{ color:"#0ea5e9" }}>{tallerById(selCaso.taller_id)?.nombre||"—"} <span style={{ color:"#334155", fontSize:12 }}>· {tallerById(selCaso.taller_id)?.provincia}</span></div></Field>}
           </div>
           <div style={{ background:"#1e293b", borderRadius:10, padding:14, marginBottom:14 }}>
             <div style={{ fontSize:11, color:"#475569", fontWeight:700, marginBottom:10, textTransform:"uppercase" }}>Timeline</div>
             {[
               { label:"Fecha del caso",          val:selCaso.fecha_caso },
-              ...(selCaso.tipo==="DEVOLUCION"?[{ label:"Carta de autorización", val:selCaso.fecha_carta_autorizacion }]:[]),
               { label:"Recojo / despacho",        val:selCaso.fecha_recojo, guia:selCaso.guia_recojo },
               ...(selCaso.tipo==="SERVICIO TECNICO"?[
                 { label:"Llegada taller/MAPALSA",   val:selCaso.fecha_llegada_taller },
@@ -1482,10 +650,7 @@ function App() {
           {selCaso.obs && <div style={{ color:"#64748b", fontSize:13, marginBottom:14, fontStyle:"italic" }}>"{selCaso.obs}"</div>}
           {!isCerrado(selCaso) ? <EstadoStepper tipo={selCaso.tipo} estadoActual={selCaso.estado} onCambiar={id=>actualizarEstado(selCaso.id,id)} />
             : <div style={{ background:"#10b98122", border:"1px solid #10b98144", borderRadius:10, padding:"12px 16px", marginBottom:16, color:"#10b981", fontSize:13, fontWeight:700 }}>✅ Caso cerrado — {selCaso.estado==="ingresado_sap"?"Ingresado en SAP":"Regularizado"}</div>}
-          <div style={{ display:"flex", gap:10 }}>
-            <button onClick={()=>abrirEditarCaso(selCaso)} style={S.btn("#8b5cf6")}>Editar caso</button>
-            <button onClick={()=>setSelCaso(null)} style={S.btnO}>Cerrar</button>
-          </div>
+          <button onClick={()=>setSelCaso(null)} style={S.btnO}>Cerrar</button>
         </Modal>
       )}
 
@@ -1493,7 +658,7 @@ function App() {
       {selPedido && (
         <Modal title={`Pedido ${selPedido.id} — ${selPedido.num_pedido}`} onClose={()=>setSelPedido(null)} wide>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:0 }}>
-            <Field label="Taller"><div style={{ color:"#f1f5f9", fontWeight:600 }}>{getTaller(selPedido.taller_id)?.nombre||"—"}</div></Field>
+            <Field label="Taller"><div style={{ color:"#f1f5f9", fontWeight:600 }}>{tallerById(selPedido.taller_id)?.nombre||"—"}</div></Field>
             <Field label="Tipo de pedido"><span style={S.tag(selPedido.tipo_pedido==="GARANTIA"?"#10b981":selPedido.tipo_pedido==="VENTA"?"#0ea5e9":"#f59e0b")}>{selPedido.tipo_pedido}</span></Field>
             <Field label="Fecha solicitud"><div style={{ color:"#94a3b8" }}>{selPedido.fecha_solicitud}</div></Field>
             <Field label="Fecha despacho"><div style={{ color:selPedido.fecha_despacho?"#f1f5f9":"#334155" }}>{selPedido.fecha_despacho||"Pendiente"}</div></Field>
@@ -1565,144 +730,6 @@ function App() {
         </Modal>
       )}
 
-
-      {/* Editar Caso */}
-      {editCaso && (
-        <Modal title={`Editar caso ${editCaso.id}`} onClose={()=>setEditCaso(null)} wide>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <Field label="OST / N° de caso"><input style={S.inp} value={editCaso.ost || ""} onChange={e=>setEditCaso({...editCaso,ost:e.target.value})} /></Field>
-            <Field label="Fecha del caso"><input style={S.inp} type="date" value={editCaso.fecha_caso || ""} onChange={e=>setEditCaso({...editCaso,fecha_caso:e.target.value})} /></Field>
-            {editCaso.tipo==="DEVOLUCION" && <Field label="Fecha carta autorización"><input style={S.inp} type="date" value={editCaso.fecha_carta_autorizacion || ""} onChange={e=>setEditCaso({...editCaso,fecha_carta_autorizacion:e.target.value, modalidad_devolucion: editCaso.modalidad_devolucion || "ELLOS_ENVIAN"})} /></Field>}
-            <Field label="Tipo de caso">
-              <select style={S.inp} value={editCaso.tipo || "SERVICIO TECNICO"} onChange={e=>setEditCaso({...editCaso,tipo:e.target.value})}>
-                {TIPOS.map(t=><option key={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Estado">
-              <select style={S.inp} value={editCaso.estado || "caso_recibido"} onChange={e=>setEditCaso({...editCaso,estado:e.target.value})}>
-                {getEstados(editCaso.tipo || "SERVICIO TECNICO").map(e=><option key={e.id} value={e.id}>{e.label}</option>)}
-              </select>
-            </Field>
-            <Field label="Tienda (cadena)">
-              <input style={S.inp} list="tiendas-list-edit" value={editCaso.tienda || ""}
-                onChange={e=>setEditCaso(escribirTiendaEnForm(editCaso, e.target.value))}
-                onBlur={e=>setEditCaso(aplicarTiendaAForm(editCaso, e.target.value))}
-                placeholder="Escribe tienda, local o código..." />
-              <datalist id="tiendas-list-edit">{tiendasList.map(t=><option key={tiendaLabel(t)} value={tiendaLabel(t)} />)}</datalist>
-              {editCaso.cod_tienda && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>Código tienda: {editCaso.cod_tienda}</div>}
-            </Field>
-            <Field label="Local específico"><input style={S.inp} value={editCaso.local || ""} onChange={e=>setEditCaso({...editCaso,local:e.target.value})} /></Field>
-            <Field label="Producto">
-              <input
-                style={S.inp}
-                list="productos-list-edit"
-                value={editCaso.producto || ""}
-                onChange={e=>setEditCaso(escribirProductoEnForm(editCaso, e.target.value))}
-                onBlur={e=>setEditCaso(aplicarProductoAForm(editCaso, e.target.value))}
-                placeholder="Escribe CODSAP o producto..."
-              />
-              <datalist id="productos-list-edit">
-                {productosList.map(p=><option key={p.codsap || p.producto} value={productLabel(p)} />)}
-              </datalist>
-              {editCaso.codsap && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>CODSAP: {editCaso.codsap}{editCaso.familia ? ` · ${editCaso.familia}` : ""}</div>}
-            </Field>
-            <Field label="Falla reportada">
-              <input
-                style={S.inp}
-                list="fallas-list-edit"
-                value={editCaso.falla || ""}
-                onChange={e=>setEditCaso(escribirFallaEnForm(editCaso, e.target.value))}
-                onBlur={e=>setEditCaso(aplicarFallaAForm(editCaso, e.target.value))}
-                placeholder="Escribe COD_FALLA o falla..."
-              />
-              <datalist id="fallas-list-edit">
-                {fallasList.map(f=><option key={f.cod_falla || f.falla} value={fallaLabel(f)} />)}
-              </datalist>
-              {editCaso.cod_falla && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>Código: {editCaso.cod_falla}{editCaso.categoria_falla ? ` · ${editCaso.categoria_falla}` : ""}</div>}
-            </Field>
-            {editCaso.tipo==="SERVICIO TECNICO" && (
-              <Field label="Taller ST asignado" span2>
-                <input style={S.inp} list="talleres-list-edit" value={editCaso.taller || ""}
-                  onChange={e=>setEditCaso(escribirTallerEnForm(editCaso, e.target.value))}
-                  onBlur={e=>setEditCaso(aplicarTallerAForm(editCaso, e.target.value))}
-                  placeholder="Escribe código, taller o provincia..." />
-                <datalist id="talleres-list-edit">{talleresList.map(t=><option key={t.id || t.cod_taller || t.nombre} value={`${(t.id || t.cod_taller) ? (t.id || t.cod_taller) + " - " : ""}${t.nombre || t.label || ""}${t.provincia ? " — " + t.provincia : ""}`} />)}</datalist>
-              </Field>
-            )}
-            <Field label="Transportista">
-              <input style={S.inp} list="transportistas-list-edit" value={editCaso.transportista || ""}
-                onChange={e=>setEditCaso({...editCaso,transportista:e.target.value})}
-                onBlur={e=>setEditCaso({...editCaso,transportista:aplicarTransportistaText(e.target.value)})}
-                placeholder="Escribe transportista..." />
-              <datalist id="transportistas-list-edit">{transportistasList.map(t=><option key={transportistaValue(t)} value={transportistaLabel(t)} />)}</datalist>
-            </Field>
-            <Field label="Fecha de recojo"><input style={S.inp} type="date" value={editCaso.fecha_recojo || ""} onChange={e=>setEditCaso({...editCaso,fecha_recojo:e.target.value})} /></Field>
-            <Field label="Guía recojo"><input style={S.inp} value={editCaso.guia_recojo || ""} onChange={e=>setEditCaso({...editCaso,guia_recojo:e.target.value})} /></Field>
-            <Field label="Llegada taller/MAPALSA"><input style={S.inp} type="date" value={editCaso.fecha_llegada_taller || ""} onChange={e=>setEditCaso({...editCaso,fecha_llegada_taller:e.target.value})} /></Field>
-            <Field label="Enviado a tienda"><input style={S.inp} type="date" value={editCaso.fecha_envio_tienda || ""} onChange={e=>setEditCaso({...editCaso,fecha_envio_tienda:e.target.value})} /></Field>
-            <Field label="Transportista envío"><input style={S.inp} list="transportistas-list-edit-envio" value={editCaso.transportista_envio || ""} onChange={e=>setEditCaso({...editCaso,transportista_envio:e.target.value})} onBlur={e=>setEditCaso({...editCaso,transportista_envio:aplicarTransportistaText(e.target.value)})} /></Field>
-            <datalist id="transportistas-list-edit-envio">{transportistasList.map(t=><option key={transportistaValue(t)} value={transportistaLabel(t)} />)}</datalist>
-            <Field label="Guía envío"><input style={S.inp} value={editCaso.guia_envio || ""} onChange={e=>setEditCaso({...editCaso,guia_envio:e.target.value})} /></Field>
-            <Field label="Fecha cierre"><input style={S.inp} type="date" value={editCaso.fecha_cierre || ""} onChange={e=>setEditCaso({...editCaso,fecha_cierre:e.target.value})} /></Field>
-          </div>
-          <Field label="Observaciones"><input style={S.inp} value={editCaso.obs || ""} onChange={e=>setEditCaso({...editCaso,obs:e.target.value})} placeholder="Notas adicionales" /></Field>
-          <div style={{ display:"flex", gap:10, marginTop:8 }}>
-            <button onClick={guardarEdicionCaso} disabled={!editCaso.tienda||!editCaso.producto} style={{ ...S.btn("#8b5cf6"), opacity:(!editCaso.tienda||!editCaso.producto)?0.4:1 }}>Guardar cambios</button>
-            <button onClick={()=>setEditCaso(null)} style={S.btnO}>Cancelar</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Confirmación carta de autorización */}
-      {cartaModal && (
-        <Modal title="Carta de autorización" onClose={()=>setCartaModal(null)}>
-          <div style={{ color:"#64748b", fontSize:13, marginBottom:14 }}>
-            Registra la fecha en que se envió la carta de autorización para que la tienda/CD despache el producto. Este dato quedará como KPI de atención.
-          </div>
-          <Field label="Fecha de envío de carta">
-            <input style={S.inp} type="date" value={cartaModal.fecha || today()} onChange={e=>setCartaModal({...cartaModal,fecha:e.target.value})} autoFocus />
-          </Field>
-          <Field label="Observación">
-            <input style={S.inp} value={cartaModal.obs || ""} onChange={e=>setCartaModal({...cartaModal,obs:e.target.value})} placeholder="Opcional: correo, tienda, CD, comentario..." />
-          </Field>
-          <div style={{ display:"flex", gap:10, marginTop:8 }}>
-            <button onClick={confirmarCartaAutorizacion} style={S.btn("#10b981")}>Confirmar y actualizar estado</button>
-            <button onClick={()=>setCartaModal(null)} style={S.btnO}>Cancelar</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Confirmación logística */}
-      {logisticaModal && (
-        <Modal title={logisticaModal.titulo} onClose={()=>setLogisticaModal(null)}>
-          <div style={{ color:"#64748b", fontSize:13, marginBottom:14 }}>
-            Para cambiar a este estado, registra la guía y el transportista. Así quedará trazabilidad logística en Sheets.
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-            <Field label="Transportista">
-              <input style={S.inp} list="transportistas-list-logistica" value={logisticaModal.transportista || ""}
-                onChange={e=>setLogisticaModal({...logisticaModal,transportista:e.target.value})}
-                onBlur={e=>setLogisticaModal({...logisticaModal,transportista:aplicarTransportistaText(e.target.value)})}
-                placeholder="Escribe transportista..." />
-              <datalist id="transportistas-list-logistica">{transportistasList.map(t=><option key={transportistaValue(t)} value={transportistaLabel(t)} />)}</datalist>
-            </Field>
-            <Field label="Fecha del movimiento">
-              <input style={S.inp} type="date" value={logisticaModal.fecha || today()} onChange={e=>setLogisticaModal({...logisticaModal,fecha:e.target.value})} />
-            </Field>
-            <Field label={logisticaModal.guiaLabel} span2>
-              <input style={S.inp} value={logisticaModal.guia || ""} onChange={e=>setLogisticaModal({...logisticaModal,guia:e.target.value})} placeholder="Ej: SCH-548796" autoFocus />
-            </Field>
-          </div>
-          <Field label="Observación logística">
-            <input style={S.inp} value={logisticaModal.obs || ""} onChange={e=>setLogisticaModal({...logisticaModal,obs:e.target.value})} placeholder="Opcional" />
-          </Field>
-          <div style={{ display:"flex", gap:10, marginTop:8 }}>
-            <button onClick={confirmarLogistica} style={S.btn("#10b981")}>Confirmar y actualizar estado</button>
-            <button onClick={()=>setLogisticaModal(null)} style={S.btnO}>Cancelar</button>
-          </div>
-        </Modal>
-      )}
-
       {/* Nuevo Caso */}
       {showNewCaso && (
         <Modal title="Registrar nuevo caso" onClose={()=>setShowNewCaso(false)}>
@@ -1715,59 +742,34 @@ function App() {
               </select>
             </Field>
             <Field label="Tienda (cadena)">
-              <input style={S.inp} list="tiendas-list" value={formCaso.tienda}
-                onChange={e=>setFormCaso(escribirTiendaEnForm(formCaso, e.target.value))}
-                onBlur={e=>setFormCaso(aplicarTiendaAForm(formCaso, e.target.value))}
-                placeholder="Escribe tienda, local o código..." />
-              <datalist id="tiendas-list">{tiendasList.map(t=><option key={tiendaLabel(t)} value={tiendaLabel(t)} />)}</datalist>
-              {formCaso.cod_tienda && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>Código tienda: {formCaso.cod_tienda}</div>}
+              <select style={S.inp} value={formCaso.tienda} onChange={e=>setFormCaso({...formCaso,tienda:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {TIENDAS.map(t=><option key={t}>{t}</option>)}
+              </select>
             </Field>
             <Field label="Local específico"><input style={S.inp} value={formCaso.local} onChange={e=>setFormCaso({...formCaso,local:e.target.value})} placeholder="Ej: PROMART SALAVERRY" /></Field>
             <Field label="Producto">
-              <input
-                style={S.inp}
-                list="productos-list"
-                value={formCaso.producto}
-                onChange={e=>setFormCaso(escribirProductoEnForm(formCaso, e.target.value))}
-                onBlur={e=>setFormCaso(aplicarProductoAForm(formCaso, e.target.value))}
-                placeholder="Escribe CODSAP o producto..."
-              />
-              <datalist id="productos-list">
-                {productosList.map(p=><option key={p.codsap || p.producto} value={productLabel(p)} />)}
-              </datalist>
-              {formCaso.codsap && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>CODSAP: {formCaso.codsap}{formCaso.familia ? ` · ${formCaso.familia}` : ""}</div>}
+              <select style={S.inp} value={formCaso.producto} onChange={e=>setFormCaso({...formCaso,producto:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {PRODUCTOS.map(p=><option key={p}>{p}</option>)}
+              </select>
             </Field>
             {formCaso.tipo==="SERVICIO TECNICO" && (
               <Field label="Taller ST asignado" span2>
-                <input style={S.inp} list="talleres-list" value={formCaso.taller}
-                  onChange={e=>setFormCaso(escribirTallerEnForm(formCaso, e.target.value))}
-                  onBlur={e=>setFormCaso(aplicarTallerAForm(formCaso, e.target.value))}
-                  placeholder="Escribe código, taller o provincia..." />
-                <datalist id="talleres-list">{talleresList.map(t=><option key={t.id || t.cod_taller || t.nombre} value={`${(t.id || t.cod_taller) ? (t.id || t.cod_taller) + " - " : ""}${t.nombre || t.label || ""}${t.provincia ? " — " + t.provincia : ""}`} />)}</datalist>
+                <select style={S.inp} value={formCaso.taller_id} onChange={e=>setFormCaso({...formCaso,taller_id:e.target.value})}>
+                  <option value="">Seleccionar...</option>
+                  {TALLERES.map(t=><option key={t.id} value={t.id}>{t.nombre} — {t.provincia}</option>)}
+                </select>
               </Field>
             )}
             <Field label="Transportista">
-              <input style={S.inp} list="transportistas-list" value={formCaso.transportista}
-                onChange={e=>setFormCaso({...formCaso,transportista:e.target.value})}
-                onBlur={e=>setFormCaso({...formCaso,transportista:aplicarTransportistaText(e.target.value)})}
-                placeholder="Escribe transportista..." />
-              <datalist id="transportistas-list">{transportistasList.map(t=><option key={transportistaValue(t)} value={transportistaLabel(t)} />)}</datalist>
+              <select style={S.inp} value={formCaso.transportista} onChange={e=>setFormCaso({...formCaso,transportista:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {TRANSPORTISTAS.map(t=><option key={t}>{t}</option>)}
+              </select>
             </Field>
             <Field label="Fecha de recojo"><input style={S.inp} type="date" value={formCaso.fecha_recojo} onChange={e=>setFormCaso({...formCaso,fecha_recojo:e.target.value})} /></Field>
-            <Field label="Falla reportada">
-              <input
-                style={S.inp}
-                list="fallas-list"
-                value={formCaso.falla}
-                onChange={e=>setFormCaso(escribirFallaEnForm(formCaso, e.target.value))}
-                onBlur={e=>setFormCaso(aplicarFallaAForm(formCaso, e.target.value))}
-                placeholder="Escribe COD_FALLA o falla..."
-              />
-              <datalist id="fallas-list">
-                {fallasList.map(f=><option key={f.cod_falla || f.falla} value={fallaLabel(f)} />)}
-              </datalist>
-              {formCaso.cod_falla && <div style={{ color:"#64748b", fontSize:11, marginTop:4 }}>Código: {formCaso.cod_falla}{formCaso.categoria_falla ? ` · ${formCaso.categoria_falla}` : ""}</div>}
-            </Field>
+            <Field label="Falla reportada"><input style={S.inp} value={formCaso.falla} onChange={e=>setFormCaso({...formCaso,falla:e.target.value})} placeholder="Descripción del problema" /></Field>
           </div>
           <Field label="Observaciones"><input style={S.inp} value={formCaso.obs} onChange={e=>setFormCaso({...formCaso,obs:e.target.value})} placeholder="Notas adicionales" /></Field>
           <div style={{ display:"flex", gap:10, marginTop:8 }}>
@@ -1785,11 +787,10 @@ function App() {
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
             <Field label="Taller que solicita">
-              <input style={S.inp} list="talleres-list-pedido" value={formPedido.taller || ""}
-                onChange={e=>setFormPedido(escribirTallerEnForm(formPedido, e.target.value))}
-                onBlur={e=>setFormPedido(aplicarTallerAForm(formPedido, e.target.value))}
-                placeholder="Escribe código, taller o provincia..." />
-              <datalist id="talleres-list-pedido">{talleresList.map(t=><option key={t.id || t.cod_taller || t.nombre} value={`${(t.id || t.cod_taller) ? (t.id || t.cod_taller) + " - " : ""}${t.nombre || t.label || ""}${t.provincia ? " — " + t.provincia : ""}`} />)}</datalist>
+              <select style={S.inp} value={formPedido.taller_id} onChange={e=>setFormPedido({...formPedido,taller_id:e.target.value})}>
+                <option value="">Seleccionar...</option>
+                {TALLERES.map(t=><option key={t.id} value={t.id}>{t.nombre} — {t.provincia}</option>)}
+              </select>
             </Field>
             <Field label="Tipo de pedido">
               <select style={S.inp} value={formPedido.tipo_pedido} onChange={e=>setFormPedido({...formPedido,tipo_pedido:e.target.value})}>
@@ -1802,16 +803,9 @@ function App() {
             <Field label="Fecha de solicitud">
               <input style={S.inp} type="date" value={formPedido.fecha_solicitud} onChange={e=>setFormPedido({...formPedido,fecha_solicitud:e.target.value})} />
             </Field>
-            <Field label="Transportista envío repuesto">
-              <input style={S.inp} list="transportistas-list-pedido" value={formPedido.transportista || ""} onChange={e=>setFormPedido({...formPedido,transportista:e.target.value})} onBlur={e=>setFormPedido({...formPedido,transportista:aplicarTransportistaText(e.target.value)})} placeholder="Opcional al crear" />
-              <datalist id="transportistas-list-pedido">{transportistasList.map(t=><option key={transportistaValue(t)} value={transportistaLabel(t)} />)}</datalist>
-            </Field>
-            <Field label="Guía envío repuesto">
-              <input style={S.inp} value={formPedido.guia || ""} onChange={e=>setFormPedido({...formPedido,guia:e.target.value})} placeholder="Opcional al crear" />
-            </Field>
           </div>
           <div style={{ marginBottom:14 }}>
-            <ItemsRepuesto items={formPedido.items} onChange={items=>setFormPedido({...formPedido,items})} productos={productosList} repuestos={maestros.repuestos} />
+            <ItemsRepuesto items={formPedido.items} onChange={items=>setFormPedido({...formPedido,items})} />
           </div>
           <Field label="Notas generales del pedido">
             <input style={S.inp} value={formPedido.notas} onChange={e=>setFormPedido({...formPedido,notas:e.target.value})} placeholder="Observaciones del pedido" />
@@ -1830,9 +824,3 @@ function App() {
     </div>
   );
 }
-
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
